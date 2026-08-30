@@ -22,7 +22,6 @@ export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard, category: 'CORE' },
   { id: 'retail-pos', label: 'Counter POS Billing', icon: ShoppingCart, category: 'CORE', badge: 'Billing' },
   { id: 'inventory', label: 'Showroom Stock & Tags', icon: Layers, category: 'CORE', badge: 'Tags' },
-  { id: 'gold-scheme', label: 'Swarna Yojana (11+1 SIP)', icon: PiggyBank, category: 'CORE', badge: 'SIP', highlight: true },
   { id: 'customers', label: 'Customer Directory & KYC', icon: UserCheck, category: 'CORE' },
   { id: 'karigar', label: 'Custom Orders & Karigars', icon: Hammer, category: 'OPERATIONS' },
   { id: 'stock-audit', label: 'Showcase Tray Audit', icon: Scale, category: 'OPERATIONS', badge: 'Audit' },

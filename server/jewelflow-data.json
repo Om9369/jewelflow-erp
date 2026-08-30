@@ -1139,6 +1139,22 @@
       "notes": "",
       "status": "DISCREPANCY_DETECTED",
       "created_at": "2026-08-30T06:39:30.766Z"
+    },
+    {
+      "id": 2,
+      "audit_date": "2026-08-30",
+      "tray_name": "Showcase A - Tray 2",
+      "category": "Bangles",
+      "metal_type": "Gold",
+      "system_items_count": 2,
+      "system_total_weight": 32.4,
+      "physical_items_count": 2,
+      "physical_total_weight": 32.4,
+      "variance_weight": 0,
+      "audited_by": "Store Manager",
+      "notes": "",
+      "status": "RECONCILED",
+      "created_at": "2026-08-30T11:42:01.641Z"
     }
   ],
   "auto_ids": {
@@ -1151,6 +1167,6 @@
     "stock_ledger": 4,
     "karigar_orders": 3,
     "old_gold_transactions": 2,
-    "tray_audits": 1
+    "tray_audits": 2
   }
 }

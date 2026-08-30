@@ -140,11 +140,11 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
           </button>
 
           <button
-            onClick={() => onNavigate('gold-scheme')}
+            onClick={() => onNavigate('customers')}
             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
           >
-            <PiggyBank className="w-4 h-4 flex-shrink-0" />
-            <span>Gold SIP (11+1)</span>
+            <Users className="w-4 h-4 flex-shrink-0" />
+            <span>Customer Directory</span>
           </button>
 
           <button

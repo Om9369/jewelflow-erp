@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Layers,
-  PiggyBank,
+  UserCheck,
   Menu
 } from 'lucide-react';
 import Navbar from './components/layout/Navbar';
@@ -22,7 +22,6 @@ import KarigarLedger from './pages/KarigarLedger';
 import StockAudit from './pages/StockAudit';
 import OldGoldPage from './pages/OldGoldPage';
 import ReportsPage from './pages/ReportsPage';
-import GoldSchemePage from './pages/GoldSchemePage';
 import CustomersPage from './pages/CustomersPage';
 import StoreSettings from './pages/StoreSettings';
 
@@ -116,10 +115,6 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'gold-scheme' && (
-            <GoldSchemePage rates={rates} />
-          )}
-
           {activeTab === 'customers' && (
             <CustomersPage />
           )}
@@ -178,16 +173,6 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('gold-scheme')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'gold-scheme' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <PiggyBank className="w-5 h-5" />
-          <span>SIP</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('inventory')}
           className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
             activeTab === 'inventory' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
@@ -195,6 +180,16 @@ export default function App() {
         >
           <Layers className="w-5 h-5" />
           <span>Catalog</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'customers' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <UserCheck className="w-5 h-5" />
+          <span>Clients</span>
         </button>
 
         <button
