@@ -1,10 +1,20 @@
+# Dependencies
 node_modules/
-client/node_modules/
-server/node_modules/
+*/node_modules/
+.npm/
+
+# Build artifacts
 dist/
-client/dist/
-.env
-.env.local
+build/
+*/dist/
+
+# System and logs
 *.log
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
