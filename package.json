@@ -1,0 +1,10 @@
+{
+  "name": "jewelflow-erp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && npm start",
+    "dev": "cd client && npm run dev"
+  }
+}
