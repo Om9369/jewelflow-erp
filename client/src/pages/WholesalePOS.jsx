@@ -39,12 +39,12 @@ export default function WholesalePOS({ rates, onInvoiceCreated }) {
         api.getEmployees()
       ]);
 
-      if (custRes.success) {
+      if (custRes && custRes.success && custRes.customers) {
         setDealers(custRes.customers);
         if (custRes.customers.length > 0) setSelectedDealerId(custRes.customers[0].id);
       }
-      if (invRes.success) setWholesaleLots(invRes.items);
-      if (empRes.success) {
+      if (invRes && invRes.success) setWholesaleLots(invRes.products || invRes.items || []);
+      if (empRes && empRes.success && empRes.employees) {
         const wholesaleAgents = empRes.employees.filter(e => e.role === 'WHOLESALE_AGENT' || e.role === 'SALES_EXECUTIVE');
         setEmployees(wholesaleAgents.length > 0 ? wholesaleAgents : empRes.employees);
         if (empRes.employees.length > 0) setSelectedAgentId(empRes.employees[0].id);

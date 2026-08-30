@@ -53,8 +53,8 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
         api.getInventory({ status: 'IN_STOCK', item_type: 'RETAIL_SINGLE' }),
         api.getEmployees()
       ]);
-      if (invRes.success) setStockItems(invRes.items);
-      if (empRes.success) {
+      if (invRes && invRes.success) setStockItems(invRes.products || invRes.items || []);
+      if (empRes && empRes.success && empRes.employees) {
         setEmployees(empRes.employees);
         if (empRes.employees.length > 0) {
           setSelectedEmployeeId(empRes.employees[0].id);

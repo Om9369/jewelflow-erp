@@ -10,10 +10,11 @@ export default function Navbar({
   setIsMobileMenuOpen,
   onOpenShareModal
 }) {
-  const gold22k = rates.find(r => r.metal === 'Gold' && r.purity.includes('22K'))?.rate_per_gram || 6750;
-  const gold24k = rates.find(r => r.metal === 'Gold' && r.purity.includes('24K'))?.rate_per_gram || 7250;
-  const gold18k = rates.find(r => r.metal === 'Gold' && r.purity.includes('18K'))?.rate_per_gram || 5550;
-  const silver999 = rates.find(r => r.metal === 'Silver' && r.purity.includes('999'))?.rate_per_gram || 88.5;
+  const safeRates = Array.isArray(rates) ? rates : [];
+  const gold22k = safeRates.find(r => r.metal === 'Gold' && r.purity.includes('22K'))?.rate_per_gram || 6750;
+  const gold24k = safeRates.find(r => r.metal === 'Gold' && r.purity.includes('24K'))?.rate_per_gram || 7250;
+  const gold18k = safeRates.find(r => r.metal === 'Gold' && r.purity.includes('18K'))?.rate_per_gram || 5550;
+  const silver999 = safeRates.find(r => r.metal === 'Silver' && r.purity.includes('999'))?.rate_per_gram || 88.5;
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 py-3">

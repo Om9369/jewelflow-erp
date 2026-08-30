@@ -48,8 +48,8 @@ export default function InventoryPage({ rates, onOpenAddModal, onPrintTag }) {
         api.getInventoryStats()
       ]);
 
-      if (invRes.success) setItems(invRes.items);
-      if (statsRes.success) setStats(statsRes.stats);
+      if (invRes && invRes.success) setItems(invRes.products || invRes.items || []);
+      if (statsRes && statsRes.success) setStats(statsRes.stats);
     } catch (err) {
       console.error(err);
     } finally {
