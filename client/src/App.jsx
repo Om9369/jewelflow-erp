@@ -3,7 +3,8 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Layers,
-  UserCheck,
+  Truck,
+  FileSpreadsheet,
   Menu
 } from 'lucide-react';
 import Navbar from './components/layout/Navbar';
@@ -17,6 +18,7 @@ import ShareModal from './components/modals/ShareModal';
 import Dashboard from './pages/Dashboard';
 import RetailPOS from './pages/RetailPOS';
 import InventoryPage from './pages/InventoryPage';
+import PurchasesPage from './pages/PurchasesPage';
 import EmployeeAnalytics from './pages/EmployeeAnalytics';
 import KarigarLedger from './pages/KarigarLedger';
 import StockAudit from './pages/StockAudit';
@@ -100,6 +102,7 @@ export default function App() {
             />
           )}
 
+          {/* Pillar 1: Sales & Counter Billing */}
           {activeTab === 'retail-pos' && (
             <RetailPOS
               rates={rates}
@@ -107,11 +110,24 @@ export default function App() {
             />
           )}
 
+          {/* Pillar 2: Showroom Stock & Inventory */}
           {activeTab === 'inventory' && (
             <InventoryPage
               rates={rates}
               onOpenAddModal={() => setIsAddProductOpen(true)}
               onPrintTag={(product) => setSelectedTagProduct(product)}
+            />
+          )}
+
+          {/* Pillar 3: Stock Purchases & Multi-Split Settlements */}
+          {activeTab === 'purchases' && (
+            <PurchasesPage rates={rates} />
+          )}
+
+          {/* Sales Records & Tax Registers */}
+          {activeTab === 'reports' && (
+            <ReportsPage
+              onPrintInvoice={(inv) => setSelectedInvoice(inv)}
             />
           )}
 
@@ -137,12 +153,6 @@ export default function App() {
             <OldGoldPage rates={rates} />
           )}
 
-          {activeTab === 'reports' && (
-            <ReportsPage
-              onPrintInvoice={(inv) => setSelectedInvoice(inv)}
-            />
-          )}
-
           {activeTab === 'store-settings' && (
             <StoreSettings />
           )}
@@ -150,18 +160,8 @@ export default function App() {
 
       </div>
 
-      {/* Mobile Bottom Quick Navigation Bar */}
+      {/* Mobile Bottom Quick Navigation Bar (Core 3 Pillars + Records) */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] font-medium shadow-2xl">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'dashboard' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          <span>Overview</span>
-        </button>
-
         <button
           onClick={() => setActiveTab('retail-pos')}
           className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
@@ -169,7 +169,7 @@ export default function App() {
           }`}
         >
           <ShoppingCart className="w-5 h-5" />
-          <span>Billing</span>
+          <span>1. Sales</span>
         </button>
 
         <button
@@ -179,17 +179,27 @@ export default function App() {
           }`}
         >
           <Layers className="w-5 h-5" />
-          <span>Catalog</span>
+          <span>2. Inventory</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('customers')}
+          onClick={() => setActiveTab('purchases')}
           className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'customers' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'purchases' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <UserCheck className="w-5 h-5" />
-          <span>Clients</span>
+          <Truck className="w-5 h-5" />
+          <span>3. Purchases</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'reports' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <FileSpreadsheet className="w-5 h-5" />
+          <span>Records</span>
         </button>
 
         <button

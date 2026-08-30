@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Layers,
+  Truck,
   Users,
   Hammer,
   Scale,
@@ -10,7 +11,6 @@ import {
   FileSpreadsheet,
   Store,
   X,
-  PiggyBank,
   UserCheck,
   Settings,
   Sparkles,
@@ -20,14 +20,15 @@ import { getStoreConfig } from '../../services/storeConfig';
 
 export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard, category: 'CORE' },
-  { id: 'retail-pos', label: 'Counter POS Billing', icon: ShoppingCart, category: 'CORE', badge: 'Billing' },
-  { id: 'inventory', label: 'Showroom Stock & Tags', icon: Layers, category: 'CORE', badge: 'Tags' },
-  { id: 'customers', label: 'Customer Directory & KYC', icon: UserCheck, category: 'CORE' },
+  { id: 'retail-pos', label: '1. Sales & POS Billing', icon: ShoppingCart, category: 'CORE', badge: 'Sales', highlight: true },
+  { id: 'inventory', label: '2. Inventory & Stock Tags', icon: Layers, category: 'CORE', badge: 'Stock' },
+  { id: 'purchases', label: '3. Purchases & Vendor Ledger', icon: Truck, category: 'CORE', badge: 'Inward' },
+  { id: 'reports', label: 'All Sales Records & Taxes', icon: FileSpreadsheet, category: 'CORE' },
+  { id: 'customers', label: 'Customer Directory & KYC', icon: UserCheck, category: 'MANAGEMENT' },
   { id: 'karigar', label: 'Custom Orders & Karigars', icon: Hammer, category: 'OPERATIONS' },
   { id: 'stock-audit', label: 'Showcase Tray Audit', icon: Scale, category: 'OPERATIONS', badge: 'Audit' },
   { id: 'old-gold', label: 'Old Gold Scrap Buyback', icon: Coins, category: 'OPERATIONS' },
   { id: 'employee-hub', label: 'Sales Staff Hub & Targets', icon: Users, category: 'MANAGEMENT' },
-  { id: 'reports', label: 'Daily Sales & Tax Ledger', icon: FileSpreadsheet, category: 'MANAGEMENT' },
   { id: 'store-settings', label: 'Showroom Profile & Setup', icon: Settings, category: 'SETTINGS' },
 ];
 

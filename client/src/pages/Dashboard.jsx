@@ -129,30 +129,30 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
           </p>
         </div>
 
-        {/* Quick Launch Buttons */}
+        {/* 3 Core Pillars Quick Launch Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex items-center gap-2 z-10 w-full lg:w-auto pt-2 lg:pt-0">
           <button
             onClick={() => onNavigate('retail-pos')}
             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95"
           >
             <ShoppingCart className="w-4 h-4 flex-shrink-0" />
-            <span>Counter POS Bill</span>
+            <span>1. Sales Billing</span>
           </button>
 
           <button
-            onClick={() => onNavigate('customers')}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-          >
-            <Users className="w-4 h-4 flex-shrink-0" />
-            <span>Customer Directory</span>
-          </button>
-
-          <button
-            onClick={onOpenAddModal}
+            onClick={() => onNavigate('inventory')}
             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all active:scale-95"
           >
-            <Plus className="w-4 h-4 flex-shrink-0" />
-            <span>Inward Stock</span>
+            <Layers className="w-4 h-4 flex-shrink-0 text-amber-400" />
+            <span>2. Showroom Stock</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('purchases')}
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <Truck className="w-4 h-4 flex-shrink-0" />
+            <span>3. Purchases Inward</span>
           </button>
         </div>
       </div>

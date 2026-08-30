@@ -136,13 +136,17 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
   const ogRate = parseFloat(oldGold.valuation_rate) || 6250;
   const oldGoldCreditVal = enableOldGold ? Math.round(ogFineGold * ogRate) : 0;
 
-  // Invoice Totals
+  // Invoice Totals & GST Mode
+  // If payment is in CASH, 3% GST is not included (0% GST) as requested. For UPI/Card/RTGS, standard 3% GST applies.
+  const isCashPayment = paymentMode.toUpperCase() === 'CASH';
+  const effectiveGstRate = isCashPayment ? 0 : 3;
+
   const subtotalMetalAndStones = cart.reduce((sum, it) => sum + (it.net_weight * it.metal_rate + it.stone_price), 0);
   const totalMaking = cart.reduce((sum, it) => sum + it.making_charge, 0);
   const subtotal = subtotalMetalAndStones + totalMaking;
   const discountVal = parseFloat(discount) || 0;
   const taxableAmount = Math.max(0, subtotal - discountVal);
-  const gstAmount = parseFloat(((taxableAmount * 0.03)).toFixed(2)); // 3% GST
+  const gstAmount = isCashPayment ? 0 : parseFloat(((taxableAmount * 0.03)).toFixed(2)); // 0% on Cash, 3% on Digital
   const grandTotal = Math.max(0, Math.round(taxableAmount + gstAmount - oldGoldCreditVal));
 
   const totalGrossWeight = cart.reduce((sum, it) => sum + it.gross_weight, 0);
@@ -174,7 +178,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
         items: cart,
         discount: discountVal,
         payment_mode: paymentMode,
-        tax_rate: 3,
+        tax_rate: effectiveGstRate,
         notes: notes,
         old_gold: enableOldGold && oldGoldCreditVal > 0 ? {
           gross_weight: ogGross,
@@ -499,8 +503,21 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
               <span className="font-mono font-medium text-slate-200">₹{Math.round(totalMaking).toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-xs text-slate-400">
-              <span>GST (3% Jewellery Tax):</span>
-              <span className="font-mono font-medium text-slate-200">₹{gstAmount.toLocaleString()}</span>
+              <span className="flex items-center gap-1.5">
+                <span>GST:</span>
+                {isCashPayment ? (
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                    0% (Cash Payment)
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                    3% (1.5% CGST + 1.5% SGST)
+                  </span>
+                )}
+              </span>
+              <span className={`font-mono font-medium ${isCashPayment ? 'text-emerald-400' : 'text-slate-200'}`}>
+                {isCashPayment ? '₹0' : `₹${gstAmount.toLocaleString()}`}
+              </span>
             </div>
 
             {enableOldGold && oldGoldCreditVal > 0 && (
