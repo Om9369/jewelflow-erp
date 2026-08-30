@@ -5,39 +5,58 @@ import {
   CheckCircle2,
   Gem,
   Send,
-  Share2,
   FileText,
   Smartphone,
   Copy,
   Check,
-  Building2
+  Download,
+  Share2
 } from 'lucide-react';
+import { downloadInvoicePDF, shareInvoicePDFOnWhatsApp } from '../../services/pdfGenerator';
 
 export default function PrintInvoiceModal({ isOpen, onClose, invoice }) {
   const [viewMode, setViewMode] = useState('MOBILE_SLIP'); // 'MOBILE_SLIP' | 'A4_INVOICE'
   const [copied, setCopied] = useState(false);
   const [customPhone, setCustomPhone] = useState(invoice?.customer_phone || '');
+  const [isSharing, setIsSharing] = useState(false);
 
   if (!isOpen || !invoice) return null;
 
   const isWholesale = invoice.type === 'WHOLESALE_CHALLAN';
 
-  // Construct clean, luxury formatted WhatsApp message
+  // 1-Click WhatsApp PDF Sharing Action
+  const handleSharePDF = async () => {
+    try {
+      setIsSharing(true);
+      await shareInvoicePDFOnWhatsApp(invoice, customPhone);
+    } catch (err) {
+      console.error('PDF WhatsApp Share error:', err);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // 1-Click Direct PDF Download
+  const handleDownloadPDF = () => {
+    downloadInvoicePDF(invoice);
+  };
+
+  // Plain Text WhatsApp Message (Alternative)
   const generateWhatsAppMessage = () => {
     const itemsList = (invoice.items || []).map((item, i) => {
       const gWt = Number(item.gross_weight || 0).toFixed(3);
       const nWt = Number(item.net_weight || 0).toFixed(3);
-      const rate = item.metal_rate_applied ? `₹${item.metal_rate_applied.toLocaleString()}/g` : '';
-      const price = item.total_item_price ? `₹${item.total_item_price.toLocaleString()}` : '';
-      return `${i + 1}. *${item.title}*\n   • Purity: ${item.purity || '22K'} ${item.huid ? `| HUID: ${item.huid}` : ''}\n   • Wt: ${gWt}g Gross (${nWt}g Net) ${rate ? `| Rate: ${rate}` : ''}\n   • Price: ${price}`;
+      const rate = item.metal_rate_applied ? `₹${item.metal_rate_applied.toLocaleString('en-IN')}/g` : '';
+      const price = item.total_item_price ? `₹${item.total_item_price.toLocaleString('en-IN')}` : '';
+      return `${i + 1}. *${item.title}*\n   • Purity: ${item.purity || '22K'} ${item.huid ? `| HUID: ${item.huid}` : ''}\n   • Wt: ${gWt}g (${nWt}g Net) ${rate ? `| Rate: ${rate}` : ''}\n   • Total: ${price}`;
     }).join('\n\n');
 
-    const oldGoldNote = invoice.old_gold ? `\n• *Old Gold Exchange:* -₹${Number(invoice.old_gold.total_valuation || invoice.old_gold_deduction || 0).toLocaleString()} (${invoice.old_gold.net_weight || 0}g scrap)` : '';
+    const oldGoldNote = invoice.old_gold ? `\n• *Old Gold Credit:* -₹${Number(invoice.old_gold.total_valuation || invoice.old_gold_deduction || 0).toLocaleString('en-IN')} (${invoice.old_gold.net_weight || 0}g scrap)` : '';
 
     const text = `✨ *JEWELFLOW FINE JEWELLERS* ✨
 💎 *${isWholesale ? 'B2B DELIVERY CHALLAN' : 'TAX INVOICE & RECEIPT'}*
 📄 *Invoice No:* ${invoice.invoice_no}
-📅 *Date:* ${new Date(invoice.created_at || Date.now()).toLocaleDateString()}
+📅 *Date:* ${new Date(invoice.created_at || Date.now()).toLocaleDateString('en-IN')}
 👤 *Customer:* ${invoice.customer_name || 'Valued Customer'}
 🏛️ *GSTIN:* 27AAACS1234M1Z5 | *BIS:* HM-IND-916001
 ━━━━━━━━━━━━━━━━━━━━
@@ -45,21 +64,19 @@ export default function PrintInvoiceModal({ isOpen, onClose, invoice }) {
 ${itemsList}
 ━━━━━━━━━━━━━━━━━━━━
 💰 *PAYMENT SUMMARY:*
-• Subtotal: ₹${Number(invoice.subtotal || invoice.total_amount || 0).toLocaleString()}
-• Making Charges: ₹${Number(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString()}
-• GST (3%): ₹${Number(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString()}${oldGoldNote}
-${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).toLocaleString()}\n` : ''}• *TOTAL AMOUNT:* *₹${Number(invoice.total_amount || 0).toLocaleString()}*
-• Payment Mode: ${invoice.payment_mode || 'UPI / Cash'}
+• Subtotal: ₹${Number(invoice.subtotal || invoice.total_amount || 0).toLocaleString('en-IN')}
+• Making Charges: ₹${Number(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString('en-IN')}
+• GST (3%): ₹${Number(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString('en-IN')}${oldGoldNote}
+${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).toLocaleString('en-IN')}\n` : ''}• *NET PAID:* *₹${Number(invoice.total_amount || 0).toLocaleString('en-IN')}* (${invoice.payment_mode || 'UPI'})
 • Attended By: ${invoice.employee_name || 'Store Executive'}
 ━━━━━━━━━━━━━━━━━━━━
 ✅ *100% Certified BIS Hallmarked Gold & Silver*
-📍 *JewelFlow Flagship Store, Zaveri Bazaar, Mumbai*
-🙏 *Thank you for your patronage!*`;
+📍 *JewelFlow Flagship Store, Zaveri Bazaar, Mumbai*`;
 
     return encodeURIComponent(text);
   };
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsAppText = () => {
     let phone = (customPhone || invoice.customer_phone || '').replace(/[^0-9]/g, '');
     if (phone.length === 10) phone = '91' + phone;
     const msg = generateWhatsAppMessage();
@@ -82,7 +99,7 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] flex flex-col">
         
-        {/* Header & Quick Action Buttons (Always visible on mobile & desktop) */}
+        {/* Header & Quick Action Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800 no-print flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -95,7 +112,7 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                   {invoice.invoice_no}
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">Ready for instant WhatsApp sharing or printing</p>
+              <p className="text-[11px] text-slate-400">PDF document ready for WhatsApp dispatch</p>
             </div>
           </div>
 
@@ -135,7 +152,7 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
           </div>
         </div>
 
-        {/* WhatsApp Dispatch Action Bar */}
+        {/* WhatsApp & PDF Dispatch Action Bar */}
         <div className="no-print my-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
           <div className="flex items-center gap-2 flex-1">
             <Send className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -148,28 +165,33 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Primary Action: Share PDF directly on WhatsApp */}
             <button
-              onClick={handleSendWhatsApp}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              onClick={handleSharePDF}
+              disabled={isSharing}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
+              title="Send real PDF document directly to WhatsApp"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Send WhatsApp</span>
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{isSharing ? 'Generating PDF...' : 'Share PDF on WhatsApp'}</span>
             </button>
 
+            {/* Direct PDF Download */}
             <button
-              onClick={handleCopyText}
+              onClick={handleDownloadPDF}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1"
-              title="Copy bill text to clipboard"
+              title="Download official PDF to phone/computer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <Download className="w-3.5 h-3.5 text-amber-400" />
+              <span>PDF</span>
             </button>
 
+            {/* Print */}
             <button
               onClick={handlePrint}
               className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1"
-              title="Print Tax Invoice"
+              title="Print standard Tax Invoice"
             >
               <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Print</span>
@@ -207,7 +229,7 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                   <span className="text-slate-500 block text-[10px]">INVOICE NO:</span>
                   <span className="font-mono font-bold text-amber-400">{invoice.invoice_no}</span>
                   <span className="text-slate-400 block text-[10px]">
-                    {new Date(invoice.created_at || Date.now()).toLocaleDateString()}
+                    {new Date(invoice.created_at || Date.now()).toLocaleDateString('en-IN')}
                   </span>
                 </div>
               </div>
@@ -231,14 +253,14 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                         </div>
                       </div>
                       <span className="font-mono font-bold text-amber-400 text-sm whitespace-nowrap">
-                        ₹{(item.total_item_price || item.price || 0).toLocaleString()}
+                        ₹{(item.total_item_price || item.price || 0).toLocaleString('en-IN')}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-800 text-[10px] font-mono text-slate-400">
                       <div>Gross: <span className="text-slate-200 font-semibold">{Number(item.gross_weight || 0).toFixed(3)}g</span></div>
                       <div>Net: <span className="text-slate-200 font-semibold">{Number(item.net_weight || 0).toFixed(3)}g</span></div>
-                      <div className="text-right">Rate: <span className="text-slate-200 font-semibold">₹{item.metal_rate_applied?.toLocaleString()}</span></div>
+                      <div className="text-right">Rate: <span className="text-slate-200 font-semibold">₹{item.metal_rate_applied?.toLocaleString('en-IN')}</span></div>
                     </div>
                   </div>
                 ))}
@@ -248,33 +270,33 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
               <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5 text-[11px]">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal:</span>
-                  <span className="font-mono text-slate-200">₹{(invoice.subtotal || invoice.total_amount).toLocaleString()}</span>
+                  <span className="font-mono text-slate-200">₹{(invoice.subtotal || invoice.total_amount).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Making Charges:</span>
-                  <span className="font-mono text-slate-200">₹{(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString()}</span>
+                  <span className="font-mono text-slate-200">₹{(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString('en-IN')}</span>
                 </div>
                 {(invoice.gst_amount > 0 || invoice.tax_amount > 0) && (
                   <div className="flex justify-between text-slate-400">
                     <span>GST (3%):</span>
-                    <span className="font-mono text-slate-200">₹{(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString()}</span>
+                    <span className="font-mono text-slate-200">₹{(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {invoice.old_gold && (
                   <div className="flex justify-between text-emerald-400 font-semibold">
                     <span>Old Gold Exchange Deduction:</span>
-                    <span className="font-mono">-₹{(invoice.old_gold.total_valuation || invoice.old_gold_deduction || 0).toLocaleString()}</span>
+                    <span className="font-mono">-₹{(invoice.old_gold.total_valuation || invoice.old_gold_deduction || 0).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {invoice.discount > 0 && (
                   <div className="flex justify-between text-rose-400 font-semibold">
                     <span>Special Discount:</span>
-                    <span className="font-mono">-₹{Number(invoice.discount).toLocaleString()}</span>
+                    <span className="font-mono">-₹{Number(invoice.discount).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t border-slate-800 text-sm font-bold text-slate-100">
                   <span>Total Paid ({invoice.payment_mode}):</span>
-                  <span className="font-mono text-amber-400 text-base">₹{Number(invoice.total_amount).toLocaleString()}</span>
+                  <span className="font-mono text-amber-400 text-base">₹{Number(invoice.total_amount).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -310,7 +332,7 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                   </span>
                   <p className="text-xs font-mono font-bold text-slate-900 mt-1">{invoice.invoice_no}</p>
                   <p className="text-[10px] text-slate-600">
-                    Date: {new Date(invoice.created_at || Date.now()).toLocaleDateString()}
+                    Date: {new Date(invoice.created_at || Date.now()).toLocaleDateString('en-IN')}
                   </p>
                 </div>
               </div>
@@ -354,9 +376,9 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                         <td className="py-2 px-2 font-semibold">{item.purity}</td>
                         <td className="py-2 px-2 text-right font-mono">{Number(item.gross_weight || 0).toFixed(3)}g</td>
                         <td className="py-2 px-2 text-right font-mono font-bold">{Number(item.net_weight || 0).toFixed(3)}g</td>
-                        <td className="py-2 px-2 text-right font-mono">₹{item.metal_rate_applied?.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-right font-mono">₹{item.metal_rate_applied?.toLocaleString('en-IN')}</td>
                         <td className="py-2 px-2 text-right font-mono font-bold text-slate-950">
-                          ₹{(item.total_item_price || item.price || 0).toLocaleString()}
+                          ₹{(item.total_item_price || item.price || 0).toLocaleString('en-IN')}
                         </td>
                       </tr>
                     ))}
@@ -375,19 +397,19 @@ ${invoice.discount > 0 ? `• Special Discount: -₹${Number(invoice.discount).t
                 <div className="w-full sm:w-1/2 space-y-1">
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Subtotal:</span>
-                    <span className="font-mono font-semibold">₹{(invoice.subtotal || invoice.total_amount).toLocaleString()}</span>
+                    <span className="font-mono font-semibold">₹{(invoice.subtotal || invoice.total_amount).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Making Charges:</span>
-                    <span className="font-mono font-semibold">₹{(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString()}</span>
+                    <span className="font-mono font-semibold">₹{(invoice.making_charges_total || invoice.making_charges || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">GST (3%):</span>
-                    <span className="font-mono font-semibold">₹{(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString()}</span>
+                    <span className="font-mono font-semibold">₹{(invoice.gst_amount || invoice.tax_amount || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between py-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
                     <span>NET TOTAL:</span>
-                    <span className="font-mono text-base">₹{Number(invoice.total_amount).toLocaleString()}</span>
+                    <span className="font-mono text-base">₹{Number(invoice.total_amount).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
