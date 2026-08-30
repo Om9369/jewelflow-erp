@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Layers,
-  Users,
+  PiggyBank,
   Menu
 } from 'lucide-react';
 import Navbar from './components/layout/Navbar';
@@ -23,8 +23,12 @@ import KarigarLedger from './pages/KarigarLedger';
 import StockAudit from './pages/StockAudit';
 import OldGoldPage from './pages/OldGoldPage';
 import ReportsPage from './pages/ReportsPage';
+import GoldSchemePage from './pages/GoldSchemePage';
+import CustomersPage from './pages/CustomersPage';
+import StoreSettings from './pages/StoreSettings';
 
 import { api } from './services/api';
+import { getStoreConfig } from './services/storeConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -32,6 +36,7 @@ export default function App() {
   const [rates, setRates] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [storeConfig, setStoreConfig] = useState(getStoreConfig());
 
   // Modals state
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
@@ -42,6 +47,9 @@ export default function App() {
 
   useEffect(() => {
     loadRates();
+    const handleStoreUpdate = () => setStoreConfig(getStoreConfig());
+    window.addEventListener('store_config_updated', handleStoreUpdate);
+    return () => window.removeEventListener('store_config_updated', handleStoreUpdate);
   }, []);
 
   const loadRates = async () => {
@@ -72,6 +80,7 @@ export default function App() {
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         onOpenShareModal={() => setIsShareModalOpen(true)}
+        storeConfig={storeConfig}
       />
 
       {/* Main Container: Sidebar + Page Content */}
@@ -122,6 +131,14 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'gold-scheme' && (
+            <GoldSchemePage rates={rates} />
+          )}
+
+          {activeTab === 'customers' && (
+            <CustomersPage />
+          )}
+
           {activeTab === 'employee-hub' && (
             <EmployeeAnalytics
               onNavigate={(tab) => setActiveTab(tab)}
@@ -144,6 +161,10 @@ export default function App() {
             <ReportsPage
               onPrintInvoice={(inv) => setSelectedInvoice(inv)}
             />
+          )}
+
+          {activeTab === 'store-settings' && (
+            <StoreSettings />
           )}
         </main>
 
@@ -172,6 +193,16 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('gold-scheme')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'gold-scheme' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <PiggyBank className="w-5 h-5" />
+          <span>SIP</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('inventory')}
           className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
             activeTab === 'inventory' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
@@ -179,16 +210,6 @@ export default function App() {
         >
           <Layers className="w-5 h-5" />
           <span>Catalog</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('employee-hub')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'employee-hub' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Users className="w-5 h-5" />
-          <span>Staff</span>
         </button>
 
         <button

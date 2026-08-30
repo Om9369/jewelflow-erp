@@ -1,3 +1,5 @@
+import { getStoreConfig } from './storeConfig';
+
 // Dynamic CDN loader for jsPDF - zero bundle overhead and 100% build stability
 let jsPdfLoader = null;
 
@@ -25,6 +27,7 @@ export const loadJsPDF = () => {
 };
 
 export const generateInvoicePDF = async (invoice) => {
+  const cfg = getStoreConfig();
   const JsPDFConstructor = await loadJsPDF();
   const doc = new JsPDFConstructor({
     orientation: 'portrait',
@@ -45,15 +48,15 @@ export const generateInvoicePDF = async (invoice) => {
   // Brand Name & Subtitle
   doc.setTextColor(254, 243, 199); // amber-100
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('JEWELFLOW FINE JEWELLERS', 14, 12);
+  doc.setFontSize(15);
+  doc.text(cfg.store_name, 14, 12);
 
   doc.setTextColor(148, 163, 184); // slate-400
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.text('108, Diamond Heritage Plaza, Zaveri Bazaar, Mumbai - 400002', 14, 18);
-  doc.text('Phone: +91 22 2845 9900 | Email: billing@jewelflow.com', 14, 23);
-  doc.text('GSTIN: 27AAACS1234M1Z5 | BIS Hallmark No: HM-IND-916001', 14, 28);
+  doc.setFontSize(8);
+  doc.text(cfg.address, 14, 17.5);
+  doc.text(`Phone: ${cfg.phone} | Email: ${cfg.email}`, 14, 22.5);
+  doc.text(`GSTIN: ${cfg.gstin} | BIS Hallmark No: ${cfg.bis_hallmark}`, 14, 27.5);
 
   // Invoice Title Badge
   doc.setFillColor(217, 119, 6);
@@ -259,7 +262,7 @@ export const generateInvoicePDF = async (invoice) => {
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   doc.text('Customer Signature', 43, sigY + 4, { align: 'center' });
-  doc.text('For JEWELFLOW FINE JEWELLERS', 163, sigY + 4, { align: 'center' });
+  doc.text(`For ${cfg.store_name}`, 163, sigY + 4, { align: 'center' });
   doc.setFontSize(6.5);
   doc.text('(Authorized Signatory)', 163, sigY + 7.5, { align: 'center' });
 
@@ -268,29 +271,31 @@ export const generateInvoicePDF = async (invoice) => {
 
 // 1-Click Download PDF
 export const downloadInvoicePDF = async (invoice) => {
+  const cfg = getStoreConfig();
   const doc = await generateInvoicePDF(invoice);
-  const fileName = `JewelFlow_Invoice_${invoice.invoice_no || 'BILL'}.pdf`;
+  const fileName = `${cfg.store_name.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_${invoice.invoice_no || 'BILL'}.pdf`;
   doc.save(fileName);
   return fileName;
 };
 
 // 1-Click WhatsApp PDF Sharing Engine
 export const shareInvoicePDFOnWhatsApp = async (invoice, customPhone = '') => {
+  const cfg = getStoreConfig();
   const doc = await generateInvoicePDF(invoice);
-  const fileName = `JewelFlow_Invoice_${invoice.invoice_no || 'BILL'}.pdf`;
+  const fileName = `${cfg.store_name.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_${invoice.invoice_no || 'BILL'}.pdf`;
   const pdfBlob = doc.output('blob');
   const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
   let phone = (customPhone || invoice.customer_phone || '').replace(/[^0-9]/g, '');
   if (phone.length === 10) phone = '91' + phone;
 
-  const summaryText = `✨ *JEWELFLOW FINE JEWELLERS* ✨\n💎 *Tax Invoice:* ${invoice.invoice_no}\n👤 *Customer:* ${invoice.customer_name}\n💰 *Net Total:* Rs. ${Number(invoice.total_amount || 0).toLocaleString('en-IN')}\n\n📄 *Official GST Tax Invoice PDF attached.*`;
+  const summaryText = `✨ *${cfg.store_name}* ✨\n💎 *Tax Invoice:* ${invoice.invoice_no}\n👤 *Customer:* ${invoice.customer_name}\n💰 *Net Total:* Rs. ${Number(invoice.total_amount || 0).toLocaleString('en-IN')}\n\n📄 *Official GST Tax Invoice PDF attached.*`;
 
   // Native Web Share with File Attachment (Supported on Android Chrome, iOS Safari, macOS, Windows)
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
-        title: `JewelFlow Invoice ${invoice.invoice_no}`,
+        title: `${cfg.store_name} Invoice ${invoice.invoice_no}`,
         text: summaryText,
         files: [file]
       });

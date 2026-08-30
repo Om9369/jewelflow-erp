@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -11,19 +11,27 @@ import {
   Building2,
   Store,
   Boxes,
-  X
+  X,
+  PiggyBank,
+  UserCheck,
+  Settings,
+  Sparkles
 } from 'lucide-react';
+import { getStoreConfig } from '../../services/storeConfig';
 
 export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, category: 'CORE' },
   { id: 'retail-pos', label: 'Retail POS Billing', icon: ShoppingCart, category: 'RETAIL', badge: 'Counter' },
   { id: 'inventory', label: 'Stock & Jewellery Catalog', icon: Layers, category: 'CORE', badge: 'Tags' },
+  { id: 'gold-scheme', label: 'Gold Scheme (11+1 SIP)', icon: PiggyBank, category: 'CORE', badge: 'SIP', highlight: true },
+  { id: 'customers', label: 'Customer Directory & KYC', icon: UserCheck, category: 'CORE' },
   { id: 'wholesale-pos', label: 'Wholesale & B2B Challan', icon: Building2, category: 'WHOLESALE', badge: 'Lots' },
-  { id: 'employee-hub', label: 'Employee Analytics Hub', icon: Users, category: 'CORE', highlight: true },
+  { id: 'employee-hub', label: 'Employee Analytics Hub', icon: Users, category: 'CORE' },
   { id: 'karigar', label: 'Karigar / Artisan Orders', icon: Hammer, category: 'OPERATIONS' },
   { id: 'stock-audit', label: 'Showcase Tray Audit', icon: Scale, category: 'OPERATIONS', badge: 'Audit' },
   { id: 'old-gold', label: 'Old Gold & Scrap Buyback', icon: Coins, category: 'OPERATIONS' },
   { id: 'reports', label: 'Stock Ledger & Reports', icon: FileSpreadsheet, category: 'REPORTS' },
+  { id: 'store-settings', label: 'Store Profile & Settings', icon: Settings, category: 'SETTINGS' },
 ];
 
 export default function Sidebar({
@@ -34,6 +42,14 @@ export default function Sidebar({
   isOpen,
   onClose
 }) {
+  const [storeConfig, setStoreConfig] = useState(getStoreConfig());
+
+  useEffect(() => {
+    const handleUpdate = () => setStoreConfig(getStoreConfig());
+    window.addEventListener('store_config_updated', handleUpdate);
+    return () => window.removeEventListener('store_config_updated', handleUpdate);
+  }, []);
+
   const content = (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 h-full min-h-screen lg:min-h-[calc(100vh-61px)]">
       
@@ -138,11 +154,11 @@ export default function Sidebar({
       <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-xs text-slate-400">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-slate-300">GSTIN:</span>
-          <span className="font-mono text-[11px] text-amber-400">27AAACS1234M1Z5</span>
+          <span className="font-mono text-[11px] text-amber-400">{storeConfig.gstin}</span>
         </div>
         <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span>BIS Hallmarking:</span>
-          <span className="text-emerald-400 font-medium">HM-IND-916001</span>
+          <span className="text-emerald-400 font-medium">{storeConfig.bis_hallmark}</span>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, TrendingUp, Edit3, Gem, Menu, X, Share2 } from 'lucide-react';
+import { getStoreConfig } from '../../services/storeConfig';
 
 export default function Navbar({
   rates,
@@ -8,8 +9,10 @@ export default function Navbar({
   setSearchQuery,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  onOpenShareModal
+  onOpenShareModal,
+  storeConfig
 }) {
+  const cfg = storeConfig || getStoreConfig();
   const safeRates = Array.isArray(rates) ? rates : [];
   const gold22k = safeRates.find(r => r.metal === 'Gold' && r.purity.includes('22K'))?.rate_per_gram || 6750;
   const gold24k = safeRates.find(r => r.metal === 'Gold' && r.purity.includes('24K'))?.rate_per_gram || 7250;
@@ -36,14 +39,14 @@ export default function Navbar({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="font-serif font-bold text-sm sm:text-lg text-amber-100 tracking-wide">
-                JEWEL<span className="text-amber-400">FLOW</span>
+              <h1 className="font-serif font-bold text-sm sm:text-lg text-amber-100 tracking-wide truncate max-w-[150px] sm:max-w-xs">
+                {cfg.store_name}
               </h1>
               <span className="px-1 py-0.2 text-[8px] sm:text-[10px] font-semibold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
                 ERP
               </span>
             </div>
-            <p className="text-[9px] sm:text-xs text-slate-400 hidden xs:block">Jewellery Management</p>
+            <p className="text-[9px] sm:text-xs text-slate-400 hidden xs:block">{cfg.tagline}</p>
           </div>
         </div>
 
