@@ -83,40 +83,35 @@ export default function InventoryPage({ rates, onOpenAddModal, onPrintTag }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded uppercase">
-              STOCK MANAGEMENT
+              SHOWROOM STOCK
             </span>
-            <h2 className="text-xl font-bold font-serif text-slate-100">Jewellery & Wholesale Lot Inventory</h2>
+            <h2 className="text-xl font-bold font-serif text-slate-100">Jewellery Catalog & Tag Inventory</h2>
           </div>
           <p className="text-xs text-slate-400">
-            Real-time Gross, Net, and Stone weights, HUID hallmarks, Tray locations, and Printable Barcode labels.
+            Real-time Gross, Net, and Stone weights, HUID hallmarks, Showcase Tray locations, and Printable Barcode Tags.
           </p>
         </div>
 
         <button
           onClick={onOpenAddModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>Add New Stock / Lot</span>
+          <span>Inward New Jewellery</span>
         </button>
       </div>
 
       {/* Stock Holdings Stat Bar */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 font-medium block">Total In-Stock Items</span>
-            <span className="text-lg font-bold font-mono text-slate-100">{stats.total_items}</span>
+            <span className="text-[10px] text-slate-400 font-medium block">Total Tagged Items</span>
+            <span className="text-lg font-bold font-mono text-slate-100">{stats.total_items} items</span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 font-medium block">Showroom Pieces</span>
-            <span className="text-lg font-bold font-mono text-amber-400">{stats.retail_pieces}</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 font-medium block">Wholesale Lots</span>
-            <span className="text-lg font-bold font-mono text-emerald-400">{stats.wholesale_lots}</span>
+            <span className="text-[10px] text-slate-400 font-medium block">Showcase In-Stock</span>
+            <span className="text-lg font-bold font-mono text-amber-400">{stats.retail_pieces || stats.total_items} pieces</span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
@@ -125,15 +120,13 @@ export default function InventoryPage({ rates, onOpenAddModal, onPrintTag }) {
           </div>
 
           <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 font-medium block">Fine Gold (99.9%)</span>
-            <span className="text-lg font-bold font-mono text-blue-400">{stats.gold_fine_weight_grams}g</span>
+            <span className="text-[10px] text-slate-400 font-medium block">Silver Stock</span>
+            <span className="text-lg font-bold font-mono text-slate-300">{stats.silver_weight_grams}g</span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 font-medium block">Holding Valuation</span>
-            <span className="text-lg font-bold font-mono text-emerald-400">
-              ₹{Math.round(stats.total_stock_valuation_inr / 1000)}k
-            </span>
+            <span className="text-[10px] text-slate-400 font-medium block">Diamonds & Stones</span>
+            <span className="text-lg font-bold font-mono text-emerald-400">{stats.diamond_carats} cts</span>
           </div>
         </div>
       )}

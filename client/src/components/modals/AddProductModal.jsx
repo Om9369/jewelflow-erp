@@ -103,7 +103,7 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, rates
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-100">Stock Inward / Add Jewellery Item</h3>
-              <p className="text-xs text-slate-400">Record single showroom pieces or wholesale bulk packets</p>
+              <p className="text-xs text-slate-400">Record showroom jewellery with Gross/Net weights, HUID, and Tray location</p>
             </div>
           </div>
           <button
@@ -111,32 +111,6 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, rates
             className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Item Type Switcher */}
-        <div className="mt-4 flex gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
-          <button
-            type="button"
-            onClick={() => setItemType('RETAIL_SINGLE')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-              itemType === 'RETAIL_SINGLE'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Single Showroom Piece (Tag / HUID)
-          </button>
-          <button
-            type="button"
-            onClick={() => setItemType('WHOLESALE_LOT')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-              itemType === 'WHOLESALE_LOT'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Wholesale Bulk Lot / Packet (Touch %)
           </button>
         </div>
 
