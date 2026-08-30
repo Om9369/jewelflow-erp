@@ -16,7 +16,6 @@ import ShareModal from './components/modals/ShareModal';
 
 import Dashboard from './pages/Dashboard';
 import RetailPOS from './pages/RetailPOS';
-import WholesalePOS from './pages/WholesalePOS';
 import InventoryPage from './pages/InventoryPage';
 import EmployeeAnalytics from './pages/EmployeeAnalytics';
 import KarigarLedger from './pages/KarigarLedger';
@@ -32,7 +31,6 @@ import { getStoreConfig } from './services/storeConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeMode, setActiveMode] = useState('RETAIL'); // RETAIL | WHOLESALE
   const [rates, setRates] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -90,12 +88,6 @@ export default function App() {
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          activeMode={activeMode}
-          setActiveMode={(mode) => {
-            setActiveMode(mode);
-            if (mode === 'RETAIL') setActiveTab('retail-pos');
-            else setActiveTab('wholesale-pos');
-          }}
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
         />
@@ -111,13 +103,6 @@ export default function App() {
 
           {activeTab === 'retail-pos' && (
             <RetailPOS
-              rates={rates}
-              onInvoiceCreated={handleInvoiceCreated}
-            />
-          )}
-
-          {activeTab === 'wholesale-pos' && (
-            <WholesalePOS
               rates={rates}
               onInvoiceCreated={handleInvoiceCreated}
             />

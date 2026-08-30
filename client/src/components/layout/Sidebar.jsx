@@ -8,37 +8,33 @@ import {
   Scale,
   Coins,
   FileSpreadsheet,
-  Building2,
   Store,
-  Boxes,
   X,
   PiggyBank,
   UserCheck,
   Settings,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { getStoreConfig } from '../../services/storeConfig';
 
 export const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, category: 'CORE' },
-  { id: 'retail-pos', label: 'Retail POS Billing', icon: ShoppingCart, category: 'RETAIL', badge: 'Counter' },
-  { id: 'inventory', label: 'Stock & Jewellery Catalog', icon: Layers, category: 'CORE', badge: 'Tags' },
-  { id: 'gold-scheme', label: 'Gold Scheme (11+1 SIP)', icon: PiggyBank, category: 'CORE', badge: 'SIP', highlight: true },
+  { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard, category: 'CORE' },
+  { id: 'retail-pos', label: 'Counter POS Billing', icon: ShoppingCart, category: 'CORE', badge: 'Billing' },
+  { id: 'inventory', label: 'Showroom Stock & Tags', icon: Layers, category: 'CORE', badge: 'Tags' },
+  { id: 'gold-scheme', label: 'Swarna Yojana (11+1 SIP)', icon: PiggyBank, category: 'CORE', badge: 'SIP', highlight: true },
   { id: 'customers', label: 'Customer Directory & KYC', icon: UserCheck, category: 'CORE' },
-  { id: 'wholesale-pos', label: 'Wholesale & B2B Challan', icon: Building2, category: 'WHOLESALE', badge: 'Lots' },
-  { id: 'employee-hub', label: 'Employee Analytics Hub', icon: Users, category: 'CORE' },
-  { id: 'karigar', label: 'Karigar / Artisan Orders', icon: Hammer, category: 'OPERATIONS' },
+  { id: 'karigar', label: 'Custom Orders & Karigars', icon: Hammer, category: 'OPERATIONS' },
   { id: 'stock-audit', label: 'Showcase Tray Audit', icon: Scale, category: 'OPERATIONS', badge: 'Audit' },
-  { id: 'old-gold', label: 'Old Gold & Scrap Buyback', icon: Coins, category: 'OPERATIONS' },
-  { id: 'reports', label: 'Stock Ledger & Reports', icon: FileSpreadsheet, category: 'REPORTS' },
-  { id: 'store-settings', label: 'Store Profile & Settings', icon: Settings, category: 'SETTINGS' },
+  { id: 'old-gold', label: 'Old Gold Scrap Buyback', icon: Coins, category: 'OPERATIONS' },
+  { id: 'employee-hub', label: 'Sales Staff Hub & Targets', icon: Users, category: 'MANAGEMENT' },
+  { id: 'reports', label: 'Daily Sales & Tax Ledger', icon: FileSpreadsheet, category: 'MANAGEMENT' },
+  { id: 'store-settings', label: 'Showroom Profile & Setup', icon: Settings, category: 'SETTINGS' },
 ];
 
 export default function Sidebar({
   activeTab,
   setActiveTab,
-  activeMode,
-  setActiveMode,
   isOpen,
   onClose
 }) {
@@ -55,7 +51,7 @@ export default function Sidebar({
       
       {/* Mobile Header with Close button */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between lg:hidden bg-slate-950">
-        <span className="text-xs font-bold text-amber-300 font-serif tracking-wider">NAVIGATION MENU</span>
+        <span className="text-xs font-bold text-amber-300 font-serif tracking-wider">SHOWROOM MENU</span>
         <button
           onClick={onClose}
           className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
@@ -64,41 +60,16 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Mode Switcher Banner */}
-      <div className="p-4 border-b border-slate-800 bg-slate-950/50">
-        <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-          Operations Mode
-        </label>
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-900 rounded-lg border border-slate-800">
-          <button
-            onClick={() => {
-              setActiveMode('RETAIL');
-              if (onClose) onClose();
-            }}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeMode === 'RETAIL'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5" />
-            <span>Retail</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveMode('WHOLESALE');
-              if (onClose) onClose();
-            }}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeMode === 'WHOLESALE'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Boxes className="w-3.5 h-3.5" />
-            <span>B2B Lots</span>
-          </button>
+      {/* Showroom Status Indicator */}
+      <div className="p-3.5 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">RETAIL SHOWROOM ERP</span>
+          </div>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+            LIVE
+          </span>
         </div>
       </div>
 

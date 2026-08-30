@@ -11,13 +11,17 @@ import {
   Users,
   ShieldCheck,
   Scale,
-  Plus
+  Plus,
+  PiggyBank,
+  Store,
+  Receipt
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import { api } from '../services/api';
+import { getStoreConfig } from '../services/storeConfig';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6', '#64748B'];
 
@@ -32,42 +36,46 @@ const defaultDashboardData = {
     karigar_metal_grams: 74.5
   },
   sales_summary: {
-    total_revenue: 2276987,
-    retail_revenue: 804793,
-    wholesale_revenue: 1472194,
-    total_gold_grams_sold: 308.5,
-    invoices_count: 5,
+    total_revenue: 1845000,
+    retail_revenue: 1845000,
+    total_gold_grams_sold: 268.5,
+    invoices_count: 24,
     top_employee: { name: 'Aarav Verma', revenue: 462703 }
   },
   category_breakdown: [
-    { name: 'Necklaces', value: 980000 },
-    { name: 'Bangles', value: 594000 },
-    { name: 'Rings', value: 650000 },
-    { name: 'Wholesale Lots', value: 945000 }
+    { name: 'Bridal Necklaces', value: 980000 },
+    { name: 'Gold Bangles & Kadas', value: 754000 },
+    { name: 'Diamond & Solitaire Rings', value: 650000 },
+    { name: 'Earrings & Jhumkas', value: 540000 },
+    { name: 'Chains & Mangalsutra', value: 420000 },
+    { name: 'Silver Coins & Utensils', value: 231543 }
   ],
   sales_trend: [
-    { day: 'Mon', retail: 120000, wholesale: 350000, total: 470000, gold_grams: 68 },
-    { day: 'Tue', retail: 185000, wholesale: 0, total: 185000, gold_grams: 28 },
-    { day: 'Wed', retail: 210000, wholesale: 880224, total: 1090224, gold_grams: 158 },
-    { day: 'Thu', retail: 95000, wholesale: 0, total: 95000, gold_grams: 14 },
-    { day: 'Fri', retail: 387074, wholesale: 591970, total: 979044, gold_grams: 132 },
-    { day: 'Sat', retail: 420000, wholesale: 250000, total: 670000, gold_grams: 95 },
-    { day: 'Sun (Today)', retail: 209658, wholesale: 253045, total: 462703, gold_grams: 80.9 }
+    { day: 'Mon', revenue: 220000, gold_grams: 32 },
+    { day: 'Tue', revenue: 285000, gold_grams: 41 },
+    { day: 'Wed', revenue: 310000, gold_grams: 45 },
+    { day: 'Thu', revenue: 295000, gold_grams: 43 },
+    { day: 'Fri', revenue: 387074, gold_grams: 56 },
+    { day: 'Sat', revenue: 420000, gold_grams: 62 },
+    { day: 'Sun (Today)', revenue: 462703, gold_grams: 68.5 }
   ],
   metal_distribution: [
-    { name: 'Gold 22K/24K', weight_grams: 148.5, color: '#F59E0B' },
-    { name: 'Silver 999/925', weight_grams: 850.0, color: '#94A3B8' },
-    { name: 'With Karigars (Gold)', weight_grams: 74.5, color: '#6366F1' }
+    { name: 'Showcase Gold (22K/18K)', weight_grams: 148.5, color: '#F59E0B' },
+    { name: 'Silver Articles (999/925)', weight_grams: 850.0, color: '#94A3B8' },
+    { name: 'With Karigars (Job Work)', weight_grams: 74.5, color: '#6366F1' }
   ]
 };
 
 export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal }) {
   const [data, setData] = useState(defaultDashboardData);
   const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [storeConfig, setStoreConfig] = useState(getStoreConfig());
 
   useEffect(() => {
     loadData();
+    const handleStoreUpdate = () => setStoreConfig(getStoreConfig());
+    window.addEventListener('store_config_updated', handleStoreUpdate);
+    return () => window.removeEventListener('store_config_updated', handleStoreUpdate);
   }, []);
 
   const loadData = async () => {
@@ -106,18 +114,18 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         <div className="space-y-1 z-10">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
-              LIVE PORTFOLIO OVERVIEW
+              RETAIL SHOWROOM LIVE PORTFOLIO
             </span>
-            <span className="text-[10px] sm:text-xs text-slate-400">| Real-time Valuation</span>
+            <span className="text-[10px] sm:text-xs text-slate-400">| Daily Auto-Valuation</span>
           </div>
           <h2 className="text-lg sm:text-2xl font-bold font-serif text-slate-100 leading-snug">
             Showroom Stock Value:{' '}
             <span className="text-amber-400 font-mono block sm:inline">
-              ₹{(stock_summary.total_stock_value_inr || 3575543).toLocaleString()}
+              ₹{(stock_summary.total_stock_value_inr || 3575543).toLocaleString('en-IN')}
             </span>
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-2 sm:line-clamp-none">
-            Valued automatically based on live daily gold & silver rates across all trays, vaults, and karigar job work.
+            Valued automatically based on today's live 22K & 24K gold rates across all counter showcase trays and vault inventory.
           </p>
         </div>
 
@@ -128,15 +136,15 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95"
           >
             <ShoppingCart className="w-4 h-4 flex-shrink-0" />
-            <span>Retail Billing</span>
+            <span>Counter POS Bill</span>
           </button>
 
           <button
-            onClick={() => onNavigate('wholesale-pos')}
+            onClick={() => onNavigate('gold-scheme')}
             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
           >
-            <Layers className="w-4 h-4 flex-shrink-0" />
-            <span>B2B Challan</span>
+            <PiggyBank className="w-4 h-4 flex-shrink-0" />
+            <span>Gold SIP (11+1)</span>
           </button>
 
           <button
@@ -149,13 +157,13 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         </div>
       </div>
 
-      {/* Primary KPI Grid */}
+      {/* Primary Retail KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Physical Gold Grams */}
         <div className="bg-slate-900/70 border border-slate-800 hover:border-amber-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Gold In Showroom</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Showcase Gold</span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Coins className="w-4 h-4" />
             </div>
@@ -169,15 +177,15 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>In-Stock Items:</span>
-            <span className="font-semibold text-slate-200">{stock_summary.in_stock_items} pieces</span>
+            <span>In-Stock Tagged:</span>
+            <span className="font-semibold text-slate-200">{stock_summary.in_stock_items} jewellery items</span>
           </div>
         </div>
 
-        {/* Physical Silver Grams */}
+        {/* Physical Silver Articles */}
         <div className="bg-slate-900/70 border border-slate-800 hover:border-slate-400/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Silver Holdings</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Silver Articles</span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-700/30 border border-slate-600/30 flex items-center justify-center text-slate-300">
               <Scale className="w-4 h-4" />
             </div>
@@ -194,10 +202,10 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
           </div>
         </div>
 
-        {/* Karigar Pending Bullion */}
+        {/* Karigar Custom Orders */}
         <div className="bg-slate-900/70 border border-slate-800 hover:border-indigo-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Karigar Job Work</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Karigar Orders</span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -206,10 +214,10 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
             <span className="text-xl sm:text-2xl font-bold font-mono text-indigo-400">
               {stock_summary.karigar_metal_grams}g
             </span>
-            <span className="text-xs text-slate-400">24K Bullion Issued</span>
+            <span className="text-xs text-slate-400">Custom Work Issued</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>Active Orders:</span>
+            <span>Active Bridal Orders:</span>
             <button
               onClick={() => onNavigate('karigar')}
               className="font-semibold text-indigo-400 hover:underline flex items-center gap-1"
@@ -220,17 +228,17 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
           </div>
         </div>
 
-        {/* Month Sales Revenue */}
+        {/* Monthly Showroom Revenue */}
         <div className="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Revenue</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Showroom Sales</span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
             <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
-              ₹{(sales_summary.total_revenue || 2276987).toLocaleString()}
+              ₹{(sales_summary.total_revenue || 1845000).toLocaleString('en-IN')}
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
@@ -248,18 +256,12 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
-              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Weekly Sales Trend</h3>
-              <p className="text-[11px] sm:text-xs text-slate-400">Daily Retail vs B2B Wholesale Revenue</p>
+              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Weekly Showroom Counter Revenue</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Daily retail jewellery billing trend</p>
             </div>
-            <div className="flex items-center gap-3 text-[11px] sm:text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded bg-amber-500" />
-                <span className="text-slate-300">Retail</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded bg-emerald-500" />
-                <span className="text-slate-300">Wholesale</span>
-              </div>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-amber-400 font-semibold">
+              <Receipt className="w-3.5 h-3.5" />
+              <span>3% GST Tax Invoices</span>
             </div>
           </div>
 
@@ -271,10 +273,6 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
                     <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorWholesale" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                  </linearGradient>
                 </defs>
                 <XAxis dataKey="day" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis
@@ -285,10 +283,9 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
-                  formatter={(value) => [`₹${value.toLocaleString()}`, '']}
+                  formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Sales Revenue']}
                 />
-                <Area type="monotone" dataKey="retail" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorRetail)" name="Retail Sales" />
-                <Area type="monotone" dataKey="wholesale" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorWholesale)" name="Wholesale B2B" />
+                <Area type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRetail)" name="Retail Sales" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -297,8 +294,8 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         {/* Metal Distribution Pie */}
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
           <div>
-            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Metal Stock Distribution</h3>
-            <p className="text-[11px] sm:text-xs text-slate-400">Total grams weight breakdown across custody</p>
+            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Showroom Metal Custody</h3>
+            <p className="text-[11px] sm:text-xs text-slate-400">Total physical grams in trays and vaults</p>
           </div>
 
           <div className="h-44 sm:h-52 w-full my-auto">
@@ -347,29 +344,29 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div>
-              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Stock Valuation by Category</h3>
-              <p className="text-[11px] sm:text-xs text-slate-400">Showcase distribution in INR</p>
+              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Showcase Stock Valuation by Category</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Retail counter distribution in INR</p>
             </div>
             <button
               onClick={() => onNavigate('inventory')}
               className="text-[11px] sm:text-xs text-amber-400 hover:underline flex items-center gap-1"
             >
-              <span>Catalog</span>
+              <span>Catalog & Tags</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {category_breakdown.map((cat, idx) => (
               <div key={idx} className="p-3 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[11px] sm:text-xs text-slate-400 block truncate">{cat.name}</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 block truncate font-semibold">{cat.name}</span>
                 <span className="text-sm sm:text-lg font-bold font-mono text-amber-400 mt-1 block">
-                  ₹{cat.value.toLocaleString()}
+                  ₹{cat.value.toLocaleString('en-IN')}
                 </span>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
                     className="bg-amber-500 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (cat.value / 1200000) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (cat.value / 1000000) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -399,9 +396,9 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
             <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2 text-[11px] sm:text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Total Volume Sold:</span>
+                <span className="text-slate-400">Retail Sales Achieved:</span>
                 <span className="font-mono font-bold text-amber-400">
-                  ₹{(topSalesExec?.performance?.total_revenue || 462703).toLocaleString()}
+                  ₹{(topSalesExec?.performance?.total_revenue || 462703).toLocaleString('en-IN')}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5 border-b border-slate-800">
@@ -411,18 +408,18 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-400">Commission Earned:</span>
                 <span className="font-mono font-semibold text-slate-100">
-                  ₹{(topSalesExec?.performance?.commission_earned || 5552).toLocaleString()}
+                  ₹{(topSalesExec?.performance?.commission_earned || 5552).toLocaleString('en-IN')}
                 </span>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => onNavigate('employees')}
+            onClick={() => onNavigate('employee-hub')}
             className="w-full mt-3 sm:mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
           >
             <Users className="w-3.5 h-3.5 text-amber-400" />
-            <span>Staff Analytics Hub</span>
+            <span>Staff Analytics & Targets</span>
           </button>
         </div>
 
