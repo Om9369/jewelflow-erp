@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, TrendingUp, Edit3, Search, Gem, Menu, X, Share2 } from 'lucide-react';
+import { Sparkles, TrendingUp, Edit3, Gem, Menu, X, Share2 } from 'lucide-react';
 
 export default function Navbar({
   rates,
@@ -17,33 +17,33 @@ export default function Navbar({
   const silver999 = safeRates.find(r => r.metal === 'Silver' && r.purity.includes('999'))?.rate_per_gram || 88.5;
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 py-3">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Left: Hamburger + Branding */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-fit">
           {/* Mobile Hamburger Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition-colors"
+            className="lg:hidden p-1.5 sm:p-2 text-slate-300 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition-colors"
             title="Toggle Menu"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-300 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold flex-shrink-0">
-            <Gem className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-300 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold flex-shrink-0">
+            <Gem className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-serif font-bold text-base sm:text-lg text-amber-100 tracking-wide">
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-serif font-bold text-sm sm:text-lg text-amber-100 tracking-wide">
                 JEWEL<span className="text-amber-400">FLOW</span>
               </h1>
-              <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+              <span className="px-1 py-0.2 text-[8px] sm:text-[10px] font-semibold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
                 ERP
               </span>
             </div>
-            <p className="text-[10px] sm:text-xs text-slate-400 hidden xs:block">Jewellery & Bullion Management</p>
+            <p className="text-[9px] sm:text-xs text-slate-400 hidden xs:block">Jewellery Management</p>
           </div>
         </div>
 
@@ -86,12 +86,12 @@ export default function Navbar({
         </div>
 
         {/* Right: Actions (Share link, Rate Modal, Profile) */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           
           <button
             onClick={onOpenShareModal}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xl transition-all shadow-sm"
-            title="Share with another device / colleague"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xl transition-all shadow-sm"
+            title="Share with phone / colleague"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Share App</span>
@@ -99,36 +99,34 @@ export default function Navbar({
 
           <button
             onClick={onOpenRateModal}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl transition-all"
+            className="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Rates</span>
           </button>
 
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-            <div className="w-8 h-8 rounded-full bg-amber-900/40 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold text-xs">
-              AD
-            </div>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-900/40 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold text-[11px] sm:text-xs">
+            AD
           </div>
 
         </div>
 
       </div>
 
-      {/* Mobile Live Rates Ticker Strip */}
-      <div className="md:hidden mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] overflow-x-auto gap-2">
-        <div className="flex items-center gap-1 text-amber-400 font-bold">
+      {/* Mobile Live Rates Scrolling Ticker Bar */}
+      <div className="md:hidden mt-2 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] overflow-x-auto gap-2 scrollbar-none whitespace-nowrap">
+        <div className="flex items-center gap-1 text-amber-400 font-bold flex-shrink-0">
           <TrendingUp className="w-3 h-3 animate-pulse" />
           <span>Rates:</span>
         </div>
-        <div className="flex items-center gap-2.5 font-mono">
-          <span className="text-amber-300">24K: ₹{gold24k}</span>
-          <span className="text-amber-400 font-bold">22K: ₹{gold22k}</span>
-          <span className="text-slate-300">Sil: ₹{silver999}</span>
+        <div className="flex items-center gap-2 font-mono flex-shrink-0 text-[10px]">
+          <span className="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-amber-300">24K: ₹{gold24k}</span>
+          <span className="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-amber-400 font-bold">22K: ₹{gold22k}</span>
+          <span className="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-300">Sil: ₹{silver999}</span>
         </div>
         <button
           onClick={onOpenRateModal}
-          className="text-[10px] text-amber-400 underline pl-1"
+          className="text-[10px] text-amber-400 underline font-semibold flex-shrink-0 pl-1"
         >
           Edit
         </button>

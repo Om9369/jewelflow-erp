@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Layers,
+  Users,
+  Menu
+} from 'lucide-react';
 import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
 import RateEditModal from './components/modals/RateEditModal';
@@ -54,7 +61,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
       
       {/* Top Navigation Bar with Live Bullion Ticker & Mobile Menu Button */}
       <Navbar
@@ -84,7 +91,7 @@ export default function App() {
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="flex-1 overflow-y-auto bg-slate-950/60 pb-16 w-full">
+        <main className="flex-1 overflow-y-auto bg-slate-950/60 pb-24 lg:pb-12 w-full max-w-full">
           {activeTab === 'dashboard' && (
             <Dashboard
               onNavigate={(tab) => setActiveTab(tab)}
@@ -141,6 +148,57 @@ export default function App() {
         </main>
 
       </div>
+
+      {/* Mobile Bottom Quick Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] font-medium shadow-2xl">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'dashboard' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          <span>Overview</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('retail-pos')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'retail-pos' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ShoppingCart className="w-5 h-5" />
+          <span>Billing</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'inventory' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="w-5 h-5" />
+          <span>Catalog</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('employee-hub')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'employee-hub' ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Users className="w-5 h-5" />
+          <span>Staff</span>
+        </button>
+
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
+        >
+          <Menu className="w-5 h-5" />
+          <span>Menu</span>
+        </button>
+      </nav>
 
       {/* Global Modals */}
       <RateEditModal

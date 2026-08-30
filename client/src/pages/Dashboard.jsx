@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell
 } from 'recharts';
 import { api } from '../services/api';
 
@@ -97,71 +97,71 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
   const topSalesExec = employees.length > 0 ? employees[0] : null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       
       {/* Top Banner: Quick Actions & Live Valuation */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/20 rounded-2xl p-6 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-amber-950/50 via-slate-900 to-slate-900 border border-amber-500/20 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
+        <div className="absolute right-0 top-0 w-72 sm:w-96 h-72 sm:h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="space-y-1 z-10">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
+            <span className="px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
               LIVE PORTFOLIO OVERVIEW
             </span>
-            <span className="text-xs text-slate-400">| Real-time Market Valuation</span>
+            <span className="text-[10px] sm:text-xs text-slate-400">| Real-time Valuation</span>
           </div>
-          <h2 className="text-2xl font-bold font-serif text-slate-100">
-            Showroom & Wholesale Stock Value:{' '}
-            <span className="text-amber-400 font-mono">
+          <h2 className="text-lg sm:text-2xl font-bold font-serif text-slate-100 leading-snug">
+            Showroom Stock Value:{' '}
+            <span className="text-amber-400 font-mono block sm:inline">
               ₹{(stock_summary.total_stock_value_inr || 3575543).toLocaleString()}
             </span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-2 sm:line-clamp-none">
             Valued automatically based on live daily gold & silver rates across all trays, vaults, and karigar job work.
           </p>
         </div>
 
         {/* Quick Launch Buttons */}
-        <div className="flex items-center gap-2.5 z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex items-center gap-2 z-10 w-full lg:w-auto pt-2 lg:pt-0">
           <button
             onClick={() => onNavigate('retail-pos')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95"
           >
-            <ShoppingCart className="w-4 h-4" />
-            <span>New Retail Sale</span>
+            <ShoppingCart className="w-4 h-4 flex-shrink-0" />
+            <span>Retail Billing</span>
           </button>
 
           <button
             onClick={() => onNavigate('wholesale-pos')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
           >
-            <Layers className="w-4 h-4" />
-            <span>Wholesale Challan</span>
+            <Layers className="w-4 h-4 flex-shrink-0" />
+            <span>B2B Challan</span>
           </button>
 
           <button
             onClick={onOpenAddModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all active:scale-95"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 flex-shrink-0" />
             <span>Inward Stock</span>
           </button>
         </div>
       </div>
 
       {/* Primary KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Physical Gold Grams */}
-        <div className="bg-slate-900/70 border border-slate-800 hover:border-amber-500/30 rounded-2xl p-5 transition-all group">
+        <div className="bg-slate-900/70 border border-slate-800 hover:border-amber-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Gold In Showroom</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Gold In Showroom</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Coins className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-slate-100">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-slate-100">
               {stock_summary.gold_gross_grams}g
             </span>
             <span className="text-xs text-amber-400/80 font-mono">
@@ -169,21 +169,21 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>In-Stock Ready Items:</span>
+            <span>In-Stock Items:</span>
             <span className="font-semibold text-slate-200">{stock_summary.in_stock_items} pieces</span>
           </div>
         </div>
 
         {/* Physical Silver Grams */}
-        <div className="bg-slate-900/70 border border-slate-800 hover:border-slate-400/30 rounded-2xl p-5 transition-all group">
+        <div className="bg-slate-900/70 border border-slate-800 hover:border-slate-400/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Silver Holdings</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-700/30 border border-slate-600/30 flex items-center justify-center text-slate-300 group-hover:scale-110 transition-transform">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Silver Holdings</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-700/30 border border-slate-600/30 flex items-center justify-center text-slate-300">
               <Scale className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-slate-100">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-slate-100">
               {stock_summary.silver_grams}g
             </span>
             <span className="text-xs text-slate-400">999 Fine & 925</span>
@@ -195,15 +195,15 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         </div>
 
         {/* Karigar Pending Bullion */}
-        <div className="bg-slate-900/70 border border-slate-800 hover:border-indigo-500/30 rounded-2xl p-5 transition-all group">
+        <div className="bg-slate-900/70 border border-slate-800 hover:border-indigo-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Karigar Job Work</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Karigar Job Work</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-indigo-400">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-indigo-400">
               {stock_summary.karigar_metal_grams}g
             </span>
             <span className="text-xs text-slate-400">24K Bullion Issued</span>
@@ -221,15 +221,15 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         </div>
 
         {/* Month Sales Revenue */}
-        <div className="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/30 rounded-2xl p-5 transition-all group">
+        <div className="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Revenue</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Revenue</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
               ₹{(sales_summary.total_revenue || 2276987).toLocaleString()}
             </span>
           </div>
@@ -242,30 +242,30 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
       </div>
 
       {/* Analytics Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Sales Trend Chart (2 Columns) */}
-        <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
-              <h3 className="font-serif font-bold text-slate-100 text-base">Weekly Sales Trend</h3>
-              <p className="text-xs text-slate-400">Daily Retail vs B2B Wholesale Revenue</p>
+              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Weekly Sales Trend</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Daily Retail vs B2B Wholesale Revenue</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-3 text-[11px] sm:text-xs">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-amber-500" />
-                <span className="text-slate-300">Retail Sales</span>
+                <div className="w-2.5 h-2.5 rounded bg-amber-500" />
+                <span className="text-slate-300">Retail</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-emerald-500" />
-                <span className="text-slate-300">Wholesale B2B</span>
+                <div className="w-2.5 h-2.5 rounded bg-emerald-500" />
+                <span className="text-slate-300">Wholesale</span>
               </div>
             </div>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-48 sm:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sales_trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={sales_trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRetail" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4}/>
@@ -276,15 +276,15 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
                     <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
+                <XAxis dataKey="day" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis
                   stroke="#64748B"
-                  fontSize={11}
+                  fontSize={10}
                   tickLine={false}
                   tickFormatter={(v) => `₹${(v/100000).toFixed(1)}L`}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
                   formatter={(value) => [`₹${value.toLocaleString()}`, '']}
                 />
                 <Area type="monotone" dataKey="retail" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorRetail)" name="Retail Sales" />
@@ -295,21 +295,21 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         </div>
 
         {/* Metal Distribution Pie */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
           <div>
-            <h3 className="font-serif font-bold text-slate-100 text-base">Metal Stock Distribution</h3>
-            <p className="text-xs text-slate-400">Total grams weight breakdown across custody</p>
+            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Metal Stock Distribution</h3>
+            <p className="text-[11px] sm:text-xs text-slate-400">Total grams weight breakdown across custody</p>
           </div>
 
-          <div className="h-52 w-full my-auto">
+          <div className="h-44 sm:h-52 w-full my-auto">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={metal_distribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
+                  innerRadius={45}
+                  outerRadius={70}
                   paddingAngle={5}
                   dataKey="weight_grams"
                 >
@@ -318,18 +318,18 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
                   formatter={(v, n, item) => [`${v}g`, item.payload.name]}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-slate-800 text-xs">
+          <div className="space-y-1.5 pt-2 border-t border-slate-800 text-[11px] sm:text-xs">
             {metal_distribution.map((m, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.color }} />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
                   <span className="text-slate-300">{m.name}</span>
                 </div>
                 <span className="font-mono font-semibold text-slate-100">{m.weight_grams}g</span>
@@ -341,29 +341,29 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
       </div>
 
       {/* Lower Row: Category Breakdown & Staff Leaderboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Category Breakdown */}
-        <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div>
-              <h3 className="font-serif font-bold text-slate-100 text-base">Stock Valuation by Category</h3>
-              <p className="text-xs text-slate-400">Showcase distribution in Indian Rupees</p>
+              <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Stock Valuation by Category</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Showcase distribution in INR</p>
             </div>
             <button
               onClick={() => onNavigate('inventory')}
-              className="text-xs text-amber-400 hover:underline flex items-center gap-1"
+              className="text-[11px] sm:text-xs text-amber-400 hover:underline flex items-center gap-1"
             >
-              <span>Manage Catalog</span>
+              <span>Catalog</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {category_breakdown.map((cat, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <span className="text-xs text-slate-400 block">{cat.name}</span>
-                <span className="text-lg font-bold font-mono text-amber-400 mt-1 block">
+              <div key={idx} className="p-3 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <span className="text-[11px] sm:text-xs text-slate-400 block truncate">{cat.name}</span>
+                <span className="text-sm sm:text-lg font-bold font-mono text-amber-400 mt-1 block">
                   ₹{cat.value.toLocaleString()}
                 </span>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
@@ -378,26 +378,26 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         </div>
 
         {/* Top Performer Card */}
-        <div className="bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-500/20 rounded-2xl p-6 flex flex-col justify-between">
+        <div className="bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-500/20 rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+              <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
                 STAR SALES EXECUTIVE
               </span>
-              <Award className="w-5 h-5 text-amber-400" />
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             </div>
 
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 font-bold text-lg font-serif">
+            <div className="mt-3 sm:mt-4 flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 font-bold text-base sm:text-lg font-serif">
                 {topSalesExec ? topSalesExec.name.charAt(0) : 'A'}
               </div>
               <div>
-                <h4 className="font-bold text-slate-100 text-base">{topSalesExec ? topSalesExec.name : 'Aarav Verma'}</h4>
-                <p className="text-xs text-slate-400">{topSalesExec ? topSalesExec.role.replace('_', ' ') : 'Senior Sales Executive'}</p>
+                <h4 className="font-bold text-slate-100 text-sm sm:text-base">{topSalesExec ? topSalesExec.name : 'Aarav Verma'}</h4>
+                <p className="text-[11px] sm:text-xs text-slate-400">{topSalesExec ? topSalesExec.role.replace('_', ' ') : 'Senior Sales Executive'}</p>
               </div>
             </div>
 
-            <div className="mt-4 space-y-2 text-xs">
+            <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2 text-[11px] sm:text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Total Volume Sold:</span>
                 <span className="font-mono font-bold text-amber-400">
@@ -419,10 +419,10 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
           <button
             onClick={() => onNavigate('employees')}
-            className="w-full mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-3 sm:mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
           >
             <Users className="w-3.5 h-3.5 text-amber-400" />
-            <span>Open Staff Analytics Hub</span>
+            <span>Staff Analytics Hub</span>
           </button>
         </div>
 
