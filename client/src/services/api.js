@@ -1,26 +1,12 @@
 import { getLocalStore, saveLocalStore } from './mockData';
 
-const isLocalEnv = () => {
-  if (typeof window === 'undefined') return true;
-  const host = window.location.hostname;
-  return host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
-};
+const API_BASE = '/api';
 
-const getApiBase = () => {
-  if (typeof window !== 'undefined' && isLocalEnv()) {
-    return `http://${window.location.hostname}:5000/api`;
-  }
-  return null;
-};
-
-const API_BASE = getApiBase();
-
-// Fast fetch with 1.2s timeout; falls back immediately on Vercel or when backend is down
+// Fast fetch with 1.5s timeout; seamlessly falls back if offline
 async function fetchOrFallback(url, options, fallbackFn) {
-  if (!API_BASE) return fallbackFn();
   try {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 1200);
+    const id = setTimeout(() => controller.abort(), 1500);
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(id);
     if (res.ok) {
