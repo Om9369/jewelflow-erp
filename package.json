@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "cd client && npm install && npm run build",
+    "build": "npm run build --prefix client",
     "start": "node server/src/server.js",
-    "dev": "cd client && npm run dev"
+    "dev": "npm run dev --prefix client"
   },
   "dependencies": {
     "cors": "^2.8.5",

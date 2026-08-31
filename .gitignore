@@ -3,11 +3,6 @@ node_modules/
 */node_modules/
 .npm/
 
-# Build artifacts
-dist/
-build/
-*/dist/
-
 # System and logs
 *.log
 .DS_Store
