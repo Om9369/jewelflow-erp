@@ -6,9 +6,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-const DB_PATH   = path.join(__dirname, '../jewelflow.db');
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DB_PATH   = isVercel ? path.join('/tmp', 'jewelflow.db') : path.join(__dirname, '../jewelflow.db');
 const JSON_PATH = path.join(__dirname, '../jewelflow-data.json');
-const BACKUP_DIR = path.join(__dirname, '../backups');
+const BACKUP_DIR = isVercel ? path.join('/tmp', 'backups') : path.join(__dirname, '../backups');
 
 // ─── Open / create database ─────────────────────────────────────────────────
 export const db = new DatabaseSync(DB_PATH);
