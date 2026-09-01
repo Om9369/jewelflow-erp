@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "build": "npm install --prefix client && npm run build --prefix client",
     "start": "node server/src/server.js",
     "dev": "npm run dev --prefix client"
   },
