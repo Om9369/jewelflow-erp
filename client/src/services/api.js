@@ -301,7 +301,35 @@ export const api = {
   getEmployees: async () => {
     return fetchOrFallback(`${API_BASE}/employees`, {}, () => {
       const store = getLocalStore();
-      return { success: true, employees: store.employees || [] };
+      const rawEmployees = store.employees || [];
+      const invoices = store.sales_invoices || [];
+      const employees = rawEmployees.map(emp => {
+        const empInvoices = invoices.filter(inv => inv.employee_id === emp.id);
+        const totalRevenue = empInvoices.reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
+        const targetRev = emp.target_monthly_revenue || 2000000;
+        const targetGrams = emp.target_monthly_grams || 300;
+        const revPct = targetRev > 0 ? parseFloat(((totalRevenue / targetRev) * 100).toFixed(1)) : 0;
+        const commRate = emp.commission_rate_pct || 1.2;
+        const commEarned = Math.round((totalRevenue * commRate) / 100);
+
+        return {
+          ...emp,
+          targets: {
+            monthly_revenue: targetRev,
+            monthly_grams: targetGrams
+          },
+          performance: {
+            total_sales_count: empInvoices.length,
+            total_revenue: totalRevenue,
+            total_gold_grams: 0,
+            commission_rate_pct: commRate,
+            commission_earned: commEarned,
+            revenue_achievement_pct: revPct,
+            grams_achievement_pct: 0
+          }
+        };
+      });
+      return { success: true, employees };
     });
   },
 

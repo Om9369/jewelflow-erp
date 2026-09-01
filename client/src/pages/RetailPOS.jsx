@@ -417,7 +417,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
               >
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.role.replace('_', ' ')}) - {emp.performance.revenue_achievement_pct}% Target
+                    {emp.name} ({emp.role ? emp.role.replace('_', ' ') : 'Staff'}){emp.performance?.revenue_achievement_pct !== undefined ? ` - ${emp.performance.revenue_achievement_pct}% Target` : ''}
                   </option>
                 ))}
               </select>

@@ -47,10 +47,43 @@ export default function EmployeeAnalytics({ onNavigate }) {
     try {
       setLoading(true);
       const res = await api.getEmployees();
-      if (res.success) {
-        setEmployees(res.employees);
-        if (res.employees.length > 0) {
-          setSelectedEmp(res.employees[0]);
+      if (res.success && Array.isArray(res.employees)) {
+        const enriched = res.employees.map((emp, index) => {
+          const targetRev = emp.targets?.monthly_revenue || emp.target_monthly_revenue || 2000000;
+          const targetGrams = emp.targets?.monthly_grams || emp.target_monthly_grams || 300;
+          const totalRev = emp.performance?.total_revenue || 0;
+          const commRate = emp.performance?.commission_rate_pct || emp.commission_rate_pct || 1.2;
+          const commEarned = emp.performance?.commission_earned || Math.round((totalRev * commRate) / 100);
+          const revPct = targetRev > 0 ? parseFloat(((totalRev / targetRev) * 100).toFixed(1)) : 0;
+          const gramsPct = targetGrams > 0 ? parseFloat((((emp.performance?.total_gold_grams || 0) / targetGrams) * 100).toFixed(1)) : 0;
+
+          return {
+            ...emp,
+            rank: emp.rank || index + 1,
+            role: emp.role || 'SALES_EXECUTIVE',
+            avatar_color: emp.avatar_color || '#D97706',
+            targets: {
+              monthly_revenue: targetRev,
+              monthly_grams: targetGrams
+            },
+            performance: {
+              total_tickets: emp.performance?.total_tickets || emp.performance?.total_sales_count || 0,
+              total_revenue: totalRev,
+              total_gold_grams: emp.performance?.total_gold_grams || 0,
+              commission_rate_pct: commRate,
+              commission_earned: commEarned,
+              revenue_achievement_pct: revPct,
+              grams_achievement_pct: gramsPct,
+              performance_grade: emp.performance?.performance_grade || (revPct >= 100 ? 'A+' : revPct >= 75 ? 'A' : 'B'),
+              average_ticket_size: emp.performance?.average_ticket_size || (totalRev > 0 ? Math.round(totalRev / Math.max(1, emp.performance?.total_tickets || 1)) : 0),
+              top_category: emp.performance?.top_category || 'Necklaces & Bangles'
+            }
+          };
+        });
+
+        setEmployees(enriched);
+        if (enriched.length > 0) {
+          setSelectedEmp(enriched[0]);
         }
       }
     } catch (err) {
@@ -62,13 +95,13 @@ export default function EmployeeAnalytics({ onNavigate }) {
 
   const handleEditOpen = (emp) => {
     setFormData({
-      name: emp.name,
+      name: emp.name || '',
       email: emp.email || '',
       phone: emp.phone || '',
-      role: emp.role,
-      target_monthly_revenue: emp.targets.monthly_revenue.toString(),
-      target_monthly_grams: emp.targets.monthly_grams.toString(),
-      commission_rate_pct: emp.performance.commission_rate_pct.toString(),
+      role: emp.role || 'SALES_EXECUTIVE',
+      target_monthly_revenue: (emp.targets?.monthly_revenue || emp.target_monthly_revenue || 2000000).toString(),
+      target_monthly_grams: (emp.targets?.monthly_grams || emp.target_monthly_grams || 300).toString(),
+      commission_rate_pct: (emp.performance?.commission_rate_pct || emp.commission_rate_pct || 1.2).toString(),
       avatar_color: emp.avatar_color || '#D97706'
     });
     setShowEditModal(true);
@@ -99,16 +132,16 @@ export default function EmployeeAnalytics({ onNavigate }) {
   }
 
   // Summary Metrics Across Team
-  const totalTeamRevenue = employees.reduce((sum, e) => sum + e.performance.total_revenue, 0);
-  const totalTeamGrams = employees.reduce((sum, e) => sum + e.performance.total_gold_grams, 0);
-  const totalTeamCommissions = employees.reduce((sum, e) => sum + e.performance.commission_earned, 0);
+  const totalTeamRevenue = employees.reduce((sum, e) => sum + (e.performance?.total_revenue || 0), 0);
+  const totalTeamGrams = employees.reduce((sum, e) => sum + (e.performance?.total_gold_grams || 0), 0);
+  const totalTeamCommissions = employees.reduce((sum, e) => sum + (e.performance?.commission_earned || 0), 0);
 
   const chartData = employees.map(e => ({
-    name: e.name.split(' ')[0],
-    revenue: e.performance.total_revenue,
-    target: e.targets.monthly_revenue,
-    grams: e.performance.total_gold_grams,
-    color: e.avatar_color
+    name: (e.name || 'Staff').split(' ')[0],
+    revenue: e.performance?.total_revenue || 0,
+    target: e.targets?.monthly_revenue || 2000000,
+    grams: e.performance?.total_gold_grams || 0,
+    color: e.avatar_color || '#D97706'
   }));
 
   return (
@@ -142,7 +175,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
             });
             setShowAddModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add Staff Member</span>
@@ -159,7 +192,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
             </div>
           </div>
           <h3 className="text-2xl font-bold font-mono text-emerald-400 mt-2">
-            ₹{totalTeamRevenue.toLocaleString()}
+            ₹{totalTeamRevenue.toLocaleString('en-IN')}
           </h3>
           <p className="text-[11px] text-slate-400 mt-1">Across all retail counters & B2B agents</p>
         </div>
@@ -185,7 +218,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
             </div>
           </div>
           <h3 className="text-2xl font-bold font-mono text-purple-300 mt-2">
-            ₹{totalTeamCommissions.toLocaleString()}
+            ₹{totalTeamCommissions.toLocaleString('en-IN')}
           </h3>
           <p className="text-[11px] text-slate-400 mt-1">Earned staff incentives this cycle</p>
         </div>
@@ -213,7 +246,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
                   <YAxis stroke="#64748B" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0B0F19', borderColor: '#334155', borderRadius: '8px', fontSize: '11px' }}
-                    formatter={(val) => [`₹${Number(val).toLocaleString()}`, 'Revenue']}
+                    formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, 'Revenue']}
                   />
                   <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry, index) => (
@@ -248,7 +281,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
                     <div className="flex items-center gap-3">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shadow"
-                        style={{ backgroundColor: emp.avatar_color }}
+                        style={{ backgroundColor: emp.avatar_color || '#D97706' }}
                       >
                         #{emp.rank}
                       </div>
@@ -256,21 +289,21 @@ export default function EmployeeAnalytics({ onNavigate }) {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-slate-100">{emp.name}</p>
                           <span className="px-1.5 py-0.2 text-[9px] bg-slate-800 text-slate-300 font-semibold rounded">
-                            {emp.role.replace('_', ' ')}
+                            {(emp.role || 'STAFF').replace('_', ' ')}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {emp.performance.total_tickets} sales • Gold Sold: {emp.performance.total_gold_grams}g
+                          {emp.performance?.total_tickets || 0} sales • Gold Sold: {emp.performance?.total_gold_grams || 0}g
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right">
                       <p className="font-mono font-bold text-amber-300 text-sm">
-                        ₹{emp.performance.total_revenue.toLocaleString()}
+                        ₹{(emp.performance?.total_revenue || 0).toLocaleString('en-IN')}
                       </p>
                       <span className="text-[10px] font-mono font-semibold text-emerald-400">
-                        ₹{emp.performance.commission_earned.toLocaleString()} Comm. ({emp.performance.revenue_achievement_pct}%)
+                        ₹{(emp.performance?.commission_earned || 0).toLocaleString('en-IN')} Comm. ({emp.performance?.revenue_achievement_pct || 0}%)
                       </span>
                     </div>
                   </div>
@@ -291,19 +324,19 @@ export default function EmployeeAnalytics({ onNavigate }) {
                 <div className="flex items-center gap-3">
                   <div
                     className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-white text-base shadow-lg"
-                    style={{ backgroundColor: selectedEmp.avatar_color }}
+                    style={{ backgroundColor: selectedEmp.avatar_color || '#D97706' }}
                   >
-                    {selectedEmp.name.charAt(0)}
+                    {(selectedEmp.name || 'S').charAt(0)}
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-100">{selectedEmp.name}</h3>
-                    <p className="text-xs text-slate-400">{selectedEmp.role.replace('_', ' ')} • {selectedEmp.phone}</p>
+                    <p className="text-xs text-slate-400">{(selectedEmp.role || 'STAFF').replace('_', ' ')} • {selectedEmp.phone || 'N/A'}</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => handleEditOpen(selectedEmp)}
-                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                   title="Edit Targets & Commission %"
                 >
                   <Edit className="w-4 h-4" />
@@ -318,18 +351,18 @@ export default function EmployeeAnalytics({ onNavigate }) {
                   <div className="flex justify-between">
                     <span className="text-slate-400">Monthly Revenue Goal:</span>
                     <span className="font-mono text-slate-200">
-                      ₹{selectedEmp.performance.total_revenue.toLocaleString()} / ₹{selectedEmp.targets.monthly_revenue.toLocaleString()}
+                      ₹{(selectedEmp.performance?.total_revenue || 0).toLocaleString('en-IN')} / ₹{(selectedEmp.targets?.monthly_revenue || 2000000).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full"
-                      style={{ width: `${Math.min(100, selectedEmp.performance.revenue_achievement_pct)}%` }}
+                      style={{ width: `${Math.min(100, selectedEmp.performance?.revenue_achievement_pct || 0)}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>Progress: {selectedEmp.performance.revenue_achievement_pct}%</span>
-                    <span className="text-amber-400 font-bold">Grade: {selectedEmp.performance.performance_grade}</span>
+                    <span>Progress: {selectedEmp.performance?.revenue_achievement_pct || 0}%</span>
+                    <span className="text-amber-400 font-bold">Grade: {selectedEmp.performance?.performance_grade || 'A'}</span>
                   </div>
                 </div>
 
@@ -338,17 +371,17 @@ export default function EmployeeAnalytics({ onNavigate }) {
                   <div className="flex justify-between">
                     <span className="text-slate-400">Gold Grams Weight Target:</span>
                     <span className="font-mono text-slate-200">
-                      {selectedEmp.performance.total_gold_grams}g / {selectedEmp.targets.monthly_grams}g
+                      {selectedEmp.performance?.total_gold_grams || 0}g / {selectedEmp.targets?.monthly_grams || 300}g
                     </span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
-                      style={{ width: `${Math.min(100, selectedEmp.performance.grams_achievement_pct)}%` }}
+                      style={{ width: `${Math.min(100, selectedEmp.performance?.grams_achievement_pct || 0)}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>Progress: {selectedEmp.performance.grams_achievement_pct}%</span>
+                    <span>Progress: {selectedEmp.performance?.grams_achievement_pct || 0}%</span>
                   </div>
                 </div>
 
@@ -361,22 +394,22 @@ export default function EmployeeAnalytics({ onNavigate }) {
                     Commission & Incentive Payout
                   </span>
                   <span className="font-mono text-slate-400">
-                    Rate: {selectedEmp.performance.commission_rate_pct}%
+                    Rate: {selectedEmp.performance?.commission_rate_pct || 1.2}%
                   </span>
                 </div>
 
                 <div className="flex justify-between text-slate-300">
                   <span>Base Sales Commission:</span>
                   <span className="font-mono font-semibold">
-                    ₹{Math.round((selectedEmp.performance.total_revenue * selectedEmp.performance.commission_rate_pct) / 100).toLocaleString()}
+                    ₹{Math.round(((selectedEmp.performance?.total_revenue || 0) * (selectedEmp.performance?.commission_rate_pct || 1.2)) / 100).toLocaleString('en-IN')}
                   </span>
                 </div>
 
-                {selectedEmp.performance.revenue_achievement_pct >= 100 && (
+                {(selectedEmp.performance?.revenue_achievement_pct || 0) >= 100 && (
                   <div className="flex justify-between text-emerald-400 font-semibold">
                     <span>Exceeded Target Bonus:</span>
                     <span className="font-mono">
-                      +₹{Math.round(((selectedEmp.performance.total_revenue - selectedEmp.targets.monthly_revenue) * (selectedEmp.performance.commission_rate_pct * 0.5)) / 100).toLocaleString()}
+                      +₹{Math.round((((selectedEmp.performance?.total_revenue || 0) - (selectedEmp.targets?.monthly_revenue || 2000000)) * ((selectedEmp.performance?.commission_rate_pct || 1.2) * 0.5)) / 100).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
@@ -384,7 +417,7 @@ export default function EmployeeAnalytics({ onNavigate }) {
                 <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
                   <span className="font-bold text-slate-100">Total Net Incentive:</span>
                   <span className="font-mono text-lg font-bold text-amber-400">
-                    ₹{selectedEmp.performance.commission_earned.toLocaleString()}
+                    ₹{(selectedEmp.performance?.commission_earned || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
@@ -394,14 +427,14 @@ export default function EmployeeAnalytics({ onNavigate }) {
                 <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Average Ticket Size:</span>
                   <span className="font-mono font-bold text-slate-200">
-                    ₹{selectedEmp.performance.average_ticket_size.toLocaleString()}
+                    ₹{(selectedEmp.performance?.average_ticket_size || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Top Category Sold:</span>
                   <span className="font-bold text-amber-400 truncate block">
-                    {selectedEmp.performance.top_category}
+                    {selectedEmp.performance?.top_category || 'Necklaces & Bangles'}
                   </span>
                 </div>
               </div>
@@ -497,13 +530,13 @@ export default function EmployeeAnalytics({ onNavigate }) {
                     setShowEditModal(false);
                     setShowAddModal(false);
                   }}
-                  className="px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg"
+                  className="px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
                 >
                   Save Settings
                 </button>
