@@ -11,21 +11,28 @@ import {
   Sparkles,
   Store,
   FileText,
-  DollarSign
+  DollarSign,
+  KeyRound,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
-import { getStoreConfig, saveStoreConfig } from '../services/storeConfig';
+import { getStoreConfig, saveStoreConfig, updateOwnerPin } from '../services/storeConfig';
 
 export default function StoreSettings() {
   const [config, setConfig] = useState(getStoreConfig());
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  useEffect(() => {
-    setConfig(getStoreConfig());
-  }, []);
+  // PIN Change State
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [pinMessage, setPinMessage] = useState({ text: '', type: '' });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setConfig(prev => ({ ...prev, [name]: value }));
+    setConfig((prev) => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSave = (e) => {
@@ -35,89 +42,81 @@ export default function StoreSettings() {
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleExportBackup = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localStorage, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `JewelFlow_Full_Backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
+  const handleUpdatePin = (e) => {
+    e.preventDefault();
+    const res = updateOwnerPin(currentPin, newPin);
+    if (res.success) {
+      setPinMessage({ text: 'Owner Master PIN updated successfully!', type: 'success' });
+      setCurrentPin('');
+      setNewPin('');
+    } else {
+      setPinMessage({ text: res.error || 'Failed to update PIN', type: 'error' });
+    }
+    setTimeout(() => setPinMessage({ text: '', type: '' }), 4000);
   };
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded uppercase">
-              WHITE-LABEL CONFIG
+              SHOWROOM PROFILE
             </span>
-            <h2 className="text-xl font-bold font-serif text-slate-100">Store Profile & Software Settings</h2>
+            <h2 className="text-xl font-bold font-serif text-slate-100">Store Profile & Security Setup</h2>
           </div>
           <p className="text-xs text-slate-400">
-            Customize showroom branding, GSTIN, BIS Hallmark licenses, banking details, and backup data.
+            Configure your jewellery store billing details, GSTIN, BIS Hallmark, bank accounts, and Owner PIN.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportBackup}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
-            title="Download full database backup"
-          >
-            <Download className="w-4 h-4 text-amber-400" />
-            <span>Export Backup (JSON)</span>
-          </button>
-        </div>
+        {savedSuccess && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Settings Saved Successfully!</span>
+          </div>
+        )}
       </div>
-
-      {savedSuccess && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2.5 text-emerald-400 text-xs font-semibold animate-in fade-in duration-200">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-          <span>Store profile settings saved successfully! All invoices, live rates, and WhatsApp receipts are updated.</span>
-        </div>
-      )}
 
       <form onSubmit={handleSave} className="space-y-6">
         
-        {/* Section 1: Showroom Identity */}
+        {/* Section 1: Store Identity */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
             <Store className="w-5 h-5 text-amber-400" />
-            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Showroom Branding</h3>
+            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Store Identity & Legal Details</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Showroom / Store Name *</label>
+              <label className="block text-slate-400 font-semibold mb-1">Store / Showroom Name *</label>
               <input
                 type="text"
                 name="store_name"
                 value={config.store_name}
                 onChange={handleChange}
                 required
-                className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100 font-bold"
-                placeholder="e.g. SHREE GANESH JEWELLERS"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100 font-semibold"
+                placeholder="e.g. Tanishq Fine Jewellers"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Tagline / Subtitle</label>
+              <label className="block text-slate-400 font-semibold mb-1">Tagline / Subheading</label>
               <input
                 type="text"
                 name="tagline"
                 value={config.tagline}
                 onChange={handleChange}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100"
-                placeholder="e.g. Pure 916 Gold & Diamond Jewellery"
+                placeholder="e.g. Gold & Diamond Specialists"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-slate-400 font-semibold mb-1">Showroom Full Address *</label>
+              <label className="block text-slate-400 font-semibold mb-1">Showroom Address (Printed on Invoices) *</label>
               <input
                 type="text"
                 name="address"
@@ -125,20 +124,20 @@ export default function StoreSettings() {
                 onChange={handleChange}
                 required
                 className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100"
-                placeholder="e.g. Shop 12, Sarafa Bazaar, Indore - 452002"
+                placeholder="Shop No, Market, City, State - PIN"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Store Phone / Mobile *</label>
+              <label className="block text-slate-400 font-semibold mb-1">Official Mobile / Phone *</label>
               <input
-                type="text"
+                type="tel"
                 name="phone"
                 value={config.phone}
                 onChange={handleChange}
                 required
                 className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100 font-mono"
-                placeholder="e.g. +91 98260 12345"
+                placeholder="+91 98200 11223"
               />
             </div>
 
@@ -150,30 +149,30 @@ export default function StoreSettings() {
                 value={config.email}
                 onChange={handleChange}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100"
-                placeholder="billing@shreeganesh.com"
+                placeholder="info@jewellers.com"
               />
             </div>
           </div>
         </div>
 
-        {/* Section 2: Statutory Compliance (GSTIN & BIS) */}
+        {/* Section 2: Statutory Compliance & Hallmark */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Government Compliance & Hallmarking</h3>
+            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Statutory, GST & Hallmark Licenses</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">GSTIN Number *</label>
+              <label className="block text-slate-400 font-semibold mb-1">GSTIN Number (15 Digits) *</label>
               <input
                 type="text"
                 name="gstin"
                 value={config.gstin}
                 onChange={handleChange}
                 required
-                className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-amber-400 font-mono font-bold"
-                placeholder="e.g. 23AABCS1429M1Z8"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-amber-400 font-mono font-bold uppercase"
+                placeholder="27AAACS1234M1Z5"
               />
             </div>
 
@@ -274,7 +273,7 @@ export default function StoreSettings() {
           </div>
         </div>
 
-        {/* Save Button */}
+        {/* Save Store Profile Button */}
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="submit"
@@ -286,6 +285,69 @@ export default function StoreSettings() {
         </div>
 
       </form>
+
+      {/* Section 4: Owner Security PIN Management */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
+          <KeyRound className="w-5 h-5 text-amber-400" />
+          <div>
+            <h3 className="font-serif font-bold text-slate-100 text-sm sm:text-base">Owner Master PIN Protection</h3>
+            <p className="text-xs text-slate-400">Protects gold rate changes, admin setup, and purchase ledger modifications from sales staff.</p>
+          </div>
+        </div>
+
+        {pinMessage.text && (
+          <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-semibold animate-in fade-in ${
+            pinMessage.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+          }`}>
+            {pinMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            <span>{pinMessage.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdatePin} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs items-end">
+          <div>
+            <label className="block text-slate-400 font-semibold mb-1">Current 4-Digit PIN *</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              required
+              value={currentPin}
+              onChange={(e) => setCurrentPin(e.target.value)}
+              placeholder="Default: 1234"
+              className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-100 font-mono tracking-widest text-center font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-400 font-semibold mb-1">New 4-Digit PIN *</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              required
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value)}
+              placeholder="e.g. 5678"
+              className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2 text-amber-300 font-mono tracking-widest text-center font-bold"
+            />
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Update Owner PIN</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
     </div>
   );
 }

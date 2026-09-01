@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { getStoreConfig } from '../services/storeConfig';
+import PurchaseVoucherModal from '../components/modals/PurchaseVoucherModal';
 
 const INITIAL_SUPPLIERS = [
   {
@@ -44,7 +45,7 @@ const INITIAL_SUPPLIERS = [
     gstin: '24AABCS4455P1Z8',
     total_purchases_inr: 1650000,
     metal_delivered_grams: 245.0,
-    pending_balance_inr: 45000, // Due to supplier
+    pending_balance_inr: 45000,
     pending_fine_gold_grams: 0
   },
   {
@@ -57,7 +58,7 @@ const INITIAL_SUPPLIERS = [
     total_purchases_inr: 980000,
     metal_delivered_grams: 145.2,
     pending_balance_inr: 0,
-    pending_fine_gold_grams: 5.5 // 5.5g fine gold due to supplier
+    pending_fine_gold_grams: 5.5
   }
 ];
 
@@ -75,15 +76,13 @@ const INITIAL_PURCHASES = [
     subtotal_inr: 327375,
     making_charges_inr: 21825,
     total_amount_inr: 349200,
-    
-    // Multi-Split Payment Breakdown
     settlement: {
       cash_paid: 100000,
       rtgs_paid: 150000,
       rtgs_ref: 'HDFCR52026082800192',
-      fine_metal_grams_given: 10.000, // 10g pure gold given
+      fine_metal_grams_given: 10.000,
       fine_metal_valuation_inr: 67500,
-      old_gold_grams_given: 5.000, // 5g scrap given
+      old_gold_grams_given: 5.000,
       old_gold_valuation_inr: 31700,
       advance_adjusted: 0,
       remaining_balance_due: 0
@@ -103,7 +102,6 @@ const INITIAL_PURCHASES = [
     subtotal_inr: 227475,
     making_charges_inr: 15165,
     total_amount_inr: 242640,
-    
     settlement: {
       cash_paid: 50000,
       rtgs_paid: 100000,
@@ -133,7 +131,7 @@ export default function PurchasesPage({ rates }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
-  const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [voucherModal, setVoucherModal] = useState({ open: false, purchase: null });
   const [storeConfig, setStoreConfig] = useState(getStoreConfig());
 
   // Form State for Inward Purchase
@@ -151,8 +149,6 @@ export default function PurchasesPage({ rates }) {
     purchase_rate_per_gram: '6750',
     making_charge_per_gram: '450',
     counter_tray: 'Showcase A - Tray 1',
-    
-    // Multi-Payment Splits
     cash_paid: '0',
     rtgs_paid: '0',
     rtgs_ref: '',
@@ -243,7 +239,6 @@ export default function PurchasesPage({ rates }) {
       status: pendingDueVal === 0 ? 'SETTLED' : 'PARTIAL_DUE'
     };
 
-    // Auto-inward into Showroom Inventory!
     try {
       await api.createProduct({
         title: purchaseForm.title,
@@ -290,14 +285,10 @@ export default function PurchasesPage({ rates }) {
     setSupplierForm({ name: '', contact_person: '', phone: '', city: 'Mumbai', gstin: '' });
   };
 
-  const handleSendWhatsAppVoucher = (p) => {
-    const text = `✨ *${storeConfig.store_name}* ✨\n📥 *PURCHASE & INWARD VOUCHER*\n\n🏢 *Supplier:* ${p.supplier_name}\n📄 *Voucher No:* ${p.voucher_no} (${p.id})\n📅 *Date:* ${p.date}\n\n💍 *Items Inwarded:* ${p.items_summary}\n⚖️ *Weight:* ${p.total_gross_weight}g Gross | ${p.total_net_weight}g Net (Fine: ${p.total_fine_gold_grams}g)\n💰 *Total Purchase Bill:* ₹${p.total_amount_inr.toLocaleString('en-IN')}\n\n*--- SETTLEMENT BREAKDOWN ---*\n💵 Cash Paid: ₹${p.settlement.cash_paid.toLocaleString('en-IN')}\n🏦 RTGS/Online: ₹${p.settlement.rtgs_paid.toLocaleString('en-IN')} ${p.settlement.rtgs_ref ? '(' + p.settlement.rtgs_ref + ')' : ''}\n🪙 Pure Metal Given: ${p.settlement.fine_metal_grams_given}g (₹${p.settlement.fine_metal_valuation_inr.toLocaleString('en-IN')})\n🪙 Old Gold Exchanged: ${p.settlement.old_gold_grams_given}g (₹${p.settlement.old_gold_valuation_inr.toLocaleString('en-IN')})\n⏳ Advance Adjusted: ₹${p.settlement.advance_adjusted.toLocaleString('en-IN')}\n${p.settlement.remaining_balance_due > 0 ? '⚠️ *Pending Balance Due:* ₹' + p.settlement.remaining_balance_due.toLocaleString('en-IN') : '✅ *STATUS: FULLY SETTLED*'}\n\n🙏 *Thank you for your business partnership!*`;
-
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+  const handleOpenVoucher = (p) => {
+    setVoucherModal({ open: true, purchase: p });
   };
 
-  // KPIs
   const totalPurchasesAmount = purchases.reduce((sum, p) => sum + p.total_amount_inr, 0);
   const totalPurchasedGoldGrams = purchases.reduce((sum, p) => sum + p.total_gross_weight, 0).toFixed(2);
   const totalCashPaidToVendors = purchases.reduce((sum, p) => sum + p.settlement.cash_paid + p.settlement.rtgs_paid, 0);
@@ -411,9 +402,7 @@ export default function PurchasesPage({ rates }) {
         </button>
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* TAB 1: PURCHASES REGISTER                                         */}
-      {/* ---------------------------------------------------------------- */}
+      {/* TAB 1: PURCHASES REGISTER */}
       {activeSubTab === 'REGISTER' && (
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -479,12 +468,12 @@ export default function PurchasesPage({ rates }) {
                     </td>
                     <td className="py-3 px-3 text-right">
                       <button
-                        onClick={() => handleSendWhatsAppVoucher(p)}
-                        className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-colors inline-flex items-center gap-1"
-                        title="Send Purchase Voucher to WhatsApp"
+                        onClick={() => handleOpenVoucher(p)}
+                        className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                        title="View & Send PDF Voucher"
                       >
-                        <Send className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold">Voucher</span>
+                        <FileText className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold">Voucher PDF</span>
                       </button>
                     </td>
                   </tr>
@@ -495,9 +484,7 @@ export default function PurchasesPage({ rates }) {
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* TAB 2: SUPPLIERS DIRECTORY                                        */}
-      {/* ---------------------------------------------------------------- */}
+      {/* TAB 2: SUPPLIERS DIRECTORY */}
       {activeSubTab === 'SUPPLIERS' && (
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
@@ -538,9 +525,7 @@ export default function PurchasesPage({ rates }) {
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* MODAL: INWARD NEW PURCHASE (WITH MULTI-SPLIT SETTLEMENT)         */}
-      {/* ---------------------------------------------------------------- */}
+      {/* MODAL: INWARD NEW PURCHASE (WITH MULTI-SPLIT SETTLEMENT) */}
       {isPurchaseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl relative my-6">
@@ -667,7 +652,7 @@ export default function PurchasesPage({ rates }) {
                 </div>
               </div>
 
-              {/* Section 3: Multi-Split Payment Settlement (Exact User Requirement) */}
+              {/* Section 3: Multi-Split Payment Settlement */}
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
@@ -880,6 +865,13 @@ export default function PurchasesPage({ rates }) {
           </div>
         </div>
       )}
+
+      {/* Purchase Voucher PDF Modal */}
+      <PurchaseVoucherModal
+        isOpen={voucherModal.open}
+        purchase={voucherModal.purchase}
+        onClose={() => setVoucherModal({ open: false, purchase: null })}
+      />
 
     </div>
   );

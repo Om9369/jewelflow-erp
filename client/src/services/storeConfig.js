@@ -15,6 +15,7 @@ const DEFAULT_STORE_CONFIG = {
   upi_id: 'jewelflow@hdfcbank',
   default_making_charge_pct: 10,
   default_making_charge_min: 450,
+  owner_pin: '1234', // Default 4-digit Master Owner PIN
   invoice_terms: [
     '1. 100% Certified Authentic Gold & Silver certified under BIS Hallmarking Scheme.',
     '2. Lifetime buyback/exchange facility available at prevalent daily bullion market rates.',
@@ -46,4 +47,21 @@ export const saveStoreConfig = (newConfig) => {
     console.error('Error saving store config:', err);
     return DEFAULT_STORE_CONFIG;
   }
+};
+
+export const verifyOwnerPin = (inputPin) => {
+  const cfg = getStoreConfig();
+  const validPin = cfg.owner_pin || '1234';
+  return String(inputPin).trim() === String(validPin).trim();
+};
+
+export const updateOwnerPin = (oldPin, newPin) => {
+  if (!verifyOwnerPin(oldPin)) {
+    return { success: false, error: 'Current PIN does not match.' };
+  }
+  if (!newPin || String(newPin).trim().length !== 4 || isNaN(newPin)) {
+    return { success: false, error: 'New PIN must be exactly 4 digits.' };
+  }
+  saveStoreConfig({ owner_pin: String(newPin).trim() });
+  return { success: true };
 };

@@ -3,6 +3,16 @@ node_modules/
 */node_modules/
 .npm/
 
+# Database files & Backups
+*.db
+*.db-shm
+*.db-wal
+server/jewelflow.db*
+server/backups/
+
+# Vercel
+.vercel/
+
 # System and logs
 *.log
 .DS_Store
@@ -13,3 +23,4 @@ Thumbs.db
 # Environment
 .env
 .env.local
+dist/dist/

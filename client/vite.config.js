@@ -6,10 +6,14 @@ export default defineConfig({
   base: '/',
   server: {
     port: 3000,
-    host: true,
+    host: '0.0.0.0',
+    strictPort: true,
+    watch: {
+      ignored: ['**/dist/**', '**/node_modules/**']
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true
       }
     }

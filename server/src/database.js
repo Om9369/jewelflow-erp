@@ -1,678 +1,424 @@
+import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dbFilePath = path.join(__dirname, '../jewelflow-data.json');
+const __dirname  = path.dirname(__filename);
 
-// In-Memory state with Auto-Persistence
-let dataStore = {
-  metal_rates: [],
-  employees: [],
-  customers: [],
-  products: [],
-  sales_invoices: [],
-  sales_items: [],
-  stock_ledger: [],
-  karigar_orders: [],
-  old_gold_transactions: [],
-  tray_audits: [],
-  auto_ids: {
-    metal_rates: 0,
-    employees: 0,
-    customers: 0,
-    products: 0,
-    sales_invoices: 0,
-    sales_items: 0,
-    stock_ledger: 0,
-    karigar_orders: 0,
-    old_gold_transactions: 0,
-    tray_audits: 0
-  }
-};
+const DB_PATH   = path.join(__dirname, '../jewelflow.db');
+const JSON_PATH = path.join(__dirname, '../jewelflow-data.json');
+const BACKUP_DIR = path.join(__dirname, '../backups');
 
-function saveToFile() {
-  try {
-    fs.writeFileSync(dbFilePath, JSON.stringify(dataStore, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving data to file:', err);
-  }
-}
+// ─── Open / create database ─────────────────────────────────────────────────
+export const db = new DatabaseSync(DB_PATH);
 
-function loadFromFile() {
-  if (fs.existsSync(dbFilePath)) {
-    try {
-      const raw = fs.readFileSync(dbFilePath, 'utf-8');
-      dataStore = JSON.parse(raw);
-    } catch (e) {
-      console.warn('Could not parse existing data file, initializing fresh store.');
-    }
-  }
-}
+// WAL mode: crash-safe writes, fast concurrent reads
+db.exec("PRAGMA journal_mode = WAL");
+db.exec("PRAGMA foreign_keys = ON");
 
-// Database helper object mimicking synchronous query interfaces
-export const db = {
-  data: dataStore,
-  save: saveToFile,
-  prepare(sql) {
-    return {
-      all(...params) {
-        return executeQuery(sql, params, 'ALL');
-      },
-      get(...params) {
-        return executeQuery(sql, params, 'GET');
-      },
-      run(...params) {
-        return executeQuery(sql, params, 'RUN');
-      }
-    };
-  },
-  exec(sql) {
-    // No-op for CREATE TABLE, handled natively by store structure
-  },
-  transaction(fn) {
-    return (...args) => {
-      const result = fn(...args);
-      saveToFile();
-      return result;
-    };
-  }
-};
-
-function executeQuery(sql, params, mode) {
-  const cleanSql = sql.trim().replace(/\s+/g, ' ');
-
-  // 1. SELECT metal_rates
-  if (cleanSql.includes('SELECT') && cleanSql.includes('metal_rates')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.metal_rates.length };
-    }
-    if (cleanSql.includes('WHERE id = ?')) {
-      const item = dataStore.metal_rates.find(r => r.id === parseInt(params[0]));
-      return item || null;
-    }
-    let res = [...dataStore.metal_rates];
-    res.sort((a, b) => a.id - b.id);
-    return mode === 'GET' ? res[0] : res;
-  }
-
-  // 2. UPDATE metal_rates
-  if (cleanSql.includes('UPDATE metal_rates')) {
-    const rate = parseFloat(params[0]);
-    const id = parseInt(params[1]);
-    const target = dataStore.metal_rates.find(r => r.id === id);
-    if (target) {
-      target.rate_per_gram = rate;
-      target.updated_at = new Date().toISOString();
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 3. SELECT employees
-  if (cleanSql.includes('SELECT') && cleanSql.includes('employees')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.employees.length };
-    }
-    if (cleanSql.includes('WHERE id = ?')) {
-      const emp = dataStore.employees.find(e => e.id === parseInt(params[0]));
-      return emp || null;
-    }
-    return mode === 'GET' ? dataStore.employees[0] : [...dataStore.employees];
-  }
-
-  // 4. INSERT INTO employees
-  if (cleanSql.includes('INSERT INTO employees')) {
-    dataStore.auto_ids.employees++;
-    const newEmp = {
-      id: dataStore.auto_ids.employees,
-      name: params[0],
-      email: params[1] || '',
-      phone: params[2],
-      role: params[3] || 'SALES_EXECUTIVE',
-      target_monthly_revenue: parseFloat(params[4]) || 2000000,
-      target_monthly_grams: parseFloat(params[5]) || 300,
-      commission_rate_pct: parseFloat(params[6]) || 1.0,
-      avatar_color: params[7] || '#D97706',
-      active: 1,
-      created_at: new Date().toISOString()
-    };
-    dataStore.employees.push(newEmp);
-    saveToFile();
-    return { lastInsertRowid: newEmp.id, changes: 1 };
-  }
-
-  // 5. UPDATE employees
-  if (cleanSql.includes('UPDATE employees')) {
-    const id = parseInt(params[params.length - 1]);
-    const emp = dataStore.employees.find(e => e.id === id);
-    if (emp) {
-      if (params[0] !== null && params[0] !== undefined) emp.name = params[0];
-      if (params[1] !== null && params[1] !== undefined) emp.email = params[1];
-      if (params[2] !== null && params[2] !== undefined) emp.phone = params[2];
-      if (params[3] !== null && params[3] !== undefined) emp.role = params[3];
-      if (params[4] !== null && params[4] !== undefined) emp.target_monthly_revenue = parseFloat(params[4]);
-      if (params[5] !== null && params[5] !== undefined) emp.target_monthly_grams = parseFloat(params[5]);
-      if (params[6] !== null && params[6] !== undefined) emp.commission_rate_pct = parseFloat(params[6]);
-      if (params[7] !== null && params[7] !== undefined) emp.avatar_color = params[7];
-      if (params[8] !== null && params[8] !== undefined) emp.active = params[8];
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 6. SELECT customers
-  if (cleanSql.includes('SELECT') && cleanSql.includes('customers')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.customers.length };
-    }
-    if (cleanSql.includes('WHERE id = ?')) {
-      const cust = dataStore.customers.find(c => c.id === parseInt(params[0]));
-      return cust || null;
-    }
-    let res = [...dataStore.customers];
-    return mode === 'GET' ? res[0] : res;
-  }
-
-  // 7. INSERT INTO customers
-  if (cleanSql.includes('INSERT INTO customers')) {
-    dataStore.auto_ids.customers++;
-    const newCust = {
-      id: dataStore.auto_ids.customers,
-      name: params[0],
-      phone: params[1],
-      email: params[2] || '',
-      type: params[3] || 'RETAIL_CUSTOMER',
-      gst_number: params[4] || '',
-      pan_card: params[5] || '',
-      address: params[6] || '',
-      fine_gold_balance: parseFloat(params[7]) || 0,
-      cash_balance: parseFloat(params[8]) || 0,
-      loyalty_points: parseInt(params[9]) || 0,
-      created_at: new Date().toISOString()
-    };
-    dataStore.customers.push(newCust);
-    saveToFile();
-    return { lastInsertRowid: newCust.id, changes: 1 };
-  }
-
-  // 8. UPDATE customers (ledger)
-  if (cleanSql.includes('UPDATE customers')) {
-    const id = parseInt(params[params.length - 1]);
-    const cust = dataStore.customers.find(c => c.id === id);
-    if (cust) {
-      const fineAdj = parseFloat(params[0]) || 0;
-      const cashAdj = parseFloat(params[1]) || 0;
-      cust.fine_gold_balance = parseFloat((cust.fine_gold_balance + fineAdj).toFixed(3));
-      cust.cash_balance = parseFloat((cust.cash_balance + cashAdj).toFixed(2));
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 9. SELECT products
-  if (cleanSql.includes('SELECT') && cleanSql.includes('products')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.products.length };
-    }
-    if (cleanSql.includes('WHERE id = ? OR sku = ? OR barcode = ?')) {
-      const key = params[0];
-      const prod = dataStore.products.find(p => p.id === parseInt(key) || p.sku === key || p.barcode === key);
-      return prod || null;
-    }
-    if (cleanSql.includes("WHERE counter_tray = ? AND status = 'IN_STOCK'")) {
-      const tray = params[0];
-      return dataStore.products.filter(p => p.counter_tray === tray && p.status === 'IN_STOCK');
-    }
-    if (cleanSql.includes("WHERE status = 'IN_STOCK'")) {
-      return dataStore.products.filter(p => p.status === 'IN_STOCK');
-    }
-    return mode === 'GET' ? dataStore.products[0] : [...dataStore.products];
-  }
-
-  // 10. INSERT INTO products
-  if (cleanSql.includes('INSERT INTO products')) {
-    dataStore.auto_ids.products++;
-    const newProd = {
-      id: dataStore.auto_ids.products,
-      sku: params[0],
-      barcode: params[1],
-      title: params[2],
-      category: params[3],
-      metal_type: params[4],
-      purity: params[5],
-      gross_weight: parseFloat(params[6]),
-      net_weight: parseFloat(params[7]),
-      stone_weight: parseFloat(params[8]) || 0,
-      stone_type: params[9] || 'None',
-      stone_cents: parseFloat(params[10]) || 0,
-      stone_price: parseFloat(params[11]) || 0,
-      wastage_pct: parseFloat(params[12]) || 0,
-      making_charge_type: params[13] || 'PER_GRAM',
-      making_charge_value: parseFloat(params[14]) || 0,
-      huid: params[15] || '',
-      counter_tray: params[16] || 'Showcase A - Tray 1',
-      item_type: params[17] || 'RETAIL_SINGLE',
-      pieces: parseInt(params[18]) || 1,
-      touch_pct: parseFloat(params[19]) || 91.6,
-      fine_metal_weight: parseFloat(params[20]) || 0,
-      status: params[21] || 'IN_STOCK',
-      cost_price: parseFloat(params[22]) || 0,
-      notes: params[23] || '',
-      created_at: new Date().toISOString()
-    };
-    dataStore.products.push(newProd);
-    saveToFile();
-    return { lastInsertRowid: newProd.id, changes: 1 };
-  }
-
-  // 11. UPDATE products
-  if (cleanSql.includes('UPDATE products')) {
-    if (cleanSql.includes("status = 'SOLD' WHERE id = ?")) {
-      const id = parseInt(params[0]);
-      const prod = dataStore.products.find(p => p.id === id);
-      if (prod) {
-        prod.status = 'SOLD';
-        saveToFile();
-        return { changes: 1 };
-      }
-      return { changes: 0 };
-    }
-    const id = parseInt(params[params.length - 1]);
-    const prod = dataStore.products.find(p => p.id === id);
-    if (prod) {
-      if (params[0] !== null && params[0] !== undefined) prod.title = params[0];
-      if (params[1] !== null && params[1] !== undefined) prod.category = params[1];
-      if (params[2] !== null && params[2] !== undefined) prod.counter_tray = params[2];
-      if (params[3] !== null && params[3] !== undefined) prod.making_charge_type = params[3];
-      if (params[4] !== null && params[4] !== undefined) prod.making_charge_value = parseFloat(params[4]);
-      if (params[5] !== null && params[5] !== undefined) prod.stone_price = parseFloat(params[5]);
-      if (params[6] !== null && params[6] !== undefined) prod.status = params[6];
-      if (params[7] !== null && params[7] !== undefined) prod.notes = params[7];
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 12. DELETE products
-  if (cleanSql.includes('DELETE FROM products')) {
-    const id = parseInt(params[0]);
-    const idx = dataStore.products.findIndex(p => p.id === id);
-    if (idx !== -1) {
-      dataStore.products.splice(idx, 1);
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 13. sales_invoices
-  if (cleanSql.includes('SELECT') && cleanSql.includes('sales_invoices')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.sales_invoices.length };
-    }
-    if (cleanSql.includes('WHERE id = ? OR invoice_no = ?')) {
-      const key = params[0];
-      const inv = dataStore.sales_invoices.find(i => i.id === parseInt(key) || i.invoice_no === key);
-      return inv || null;
-    }
-    if (cleanSql.includes('WHERE employee_id = ?')) {
-      const empId = parseInt(params[0]);
-      return dataStore.sales_invoices.filter(i => i.employee_id === empId);
-    }
-    return mode === 'GET' ? dataStore.sales_invoices[0] : [...dataStore.sales_invoices];
-  }
-
-  if (cleanSql.includes('INSERT INTO sales_invoices')) {
-    dataStore.auto_ids.sales_invoices++;
-    const newInv = {
-      id: dataStore.auto_ids.sales_invoices,
-      invoice_no: params[0],
-      type: params[1],
-      customer_id: params[2] ? parseInt(params[2]) : null,
-      customer_name: params[3],
-      customer_phone: params[4] || '',
-      employee_id: parseInt(params[5]),
-      employee_name: params[6],
-      subtotal: parseFloat(params[7]),
-      making_charges: parseFloat(params[8]) || 0,
-      stone_charges: parseFloat(params[9]) || 0,
-      old_gold_deduction: parseFloat(params[10]) || 0,
-      discount: parseFloat(params[11]) || 0,
-      tax_amount: parseFloat(params[12]) || 0,
-      total_amount: parseFloat(params[13]),
-      fine_gold_settlement_grams: parseFloat(params[14]) || 0,
-      cash_paid: parseFloat(params[15]) || 0,
-      payment_mode: params[16] || 'CASH',
-      status: params[17] || 'PAID',
-      notes: params[18] || '',
-      created_at: params[19] || new Date().toISOString()
-    };
-    dataStore.sales_invoices.push(newInv);
-    saveToFile();
-    return { lastInsertRowid: newInv.id, changes: 1 };
-  }
-
-  // 14. sales_items
-  if (cleanSql.includes('SELECT') && cleanSql.includes('sales_items')) {
-    if (cleanSql.includes('WHERE invoice_id = ?')) {
-      const invId = parseInt(params[0]);
-      return dataStore.sales_items.filter(item => item.invoice_id === invId);
-    }
-    return mode === 'GET' ? dataStore.sales_items[0] : [...dataStore.sales_items];
-  }
-
-  if (cleanSql.includes('INSERT INTO sales_items')) {
-    dataStore.auto_ids.sales_items++;
-    const newItem = {
-      id: dataStore.auto_ids.sales_items,
-      invoice_id: parseInt(params[0]),
-      product_id: params[1] ? parseInt(params[1]) : null,
-      sku: params[2],
-      title: params[3],
-      category: params[4],
-      metal_type: params[5],
-      purity: params[6],
-      gross_weight: parseFloat(params[7]),
-      net_weight: parseFloat(params[8]),
-      stone_weight: parseFloat(params[9]) || 0,
-      metal_rate_applied: parseFloat(params[10]),
-      making_charge: parseFloat(params[11]) || 0,
-      stone_price: parseFloat(params[12]) || 0,
-      total_item_price: parseFloat(params[13]),
-      pieces: parseInt(params[14]) || 1,
-      created_at: params[15] || new Date().toISOString()
-    };
-    dataStore.sales_items.push(newItem);
-    saveToFile();
-    return { lastInsertRowid: newItem.id, changes: 1 };
-  }
-
-  // 15. stock_ledger
-  if (cleanSql.includes('SELECT') && cleanSql.includes('stock_ledger')) {
-    return mode === 'GET' ? dataStore.stock_ledger[0] : [...dataStore.stock_ledger];
-  }
-
-  if (cleanSql.includes('INSERT INTO stock_ledger')) {
-    dataStore.auto_ids.stock_ledger++;
-    let newEntry;
-    if (params.length === 9) {
-      newEntry = {
-        id: dataStore.auto_ids.stock_ledger,
-        product_id: params[0] ? parseInt(params[0]) : null,
-        sku: params[1],
-        title: params[2],
-        movement_type: params[3],
-        gross_weight: parseFloat(params[4]),
-        net_weight: parseFloat(params[5]),
-        reference_id: params[6],
-        reference_type: params[7],
-        notes: params[8] || '',
-        timestamp: new Date().toISOString()
-      };
-    } else {
-      newEntry = {
-        id: dataStore.auto_ids.stock_ledger,
-        product_id: null,
-        sku: params[0],
-        title: params[1],
-        movement_type: params[2],
-        gross_weight: parseFloat(params[3]),
-        net_weight: parseFloat(params[4]),
-        reference_id: params[5],
-        reference_type: params[6],
-        notes: params[7] || '',
-        timestamp: new Date().toISOString()
-      };
-    }
-    dataStore.stock_ledger.unshift(newEntry);
-    saveToFile();
-    return { lastInsertRowid: newEntry.id, changes: 1 };
-  }
-
-  // 16. karigar_orders
-  if (cleanSql.includes('SELECT') && cleanSql.includes('karigar_orders')) {
-    if (cleanSql.includes('COUNT(*)')) {
-      return { count: dataStore.karigar_orders.length };
-    }
-    if (cleanSql.includes('WHERE id = ?')) {
-      const ko = dataStore.karigar_orders.find(k => k.id === parseInt(params[0]));
-      return ko || null;
-    }
-    if (cleanSql.includes("WHERE status = 'IN_PROGRESS'")) {
-      return dataStore.karigar_orders.filter(k => k.status === 'IN_PROGRESS');
-    }
-    return mode === 'GET' ? dataStore.karigar_orders[0] : [...dataStore.karigar_orders];
-  }
-
-  if (cleanSql.includes('INSERT INTO karigar_orders')) {
-    dataStore.auto_ids.karigar_orders++;
-    const newKO = {
-      id: dataStore.auto_ids.karigar_orders,
-      order_no: params[0],
-      karigar_name: params[1],
-      karigar_phone: params[2] || '',
-      issue_date: params[3],
-      due_date: params[4] || '',
-      raw_metal_type: params[5],
-      raw_metal_purity: params[6],
-      raw_metal_weight: parseFloat(params[7]),
-      expected_item_type: params[8],
-      expected_pieces: parseInt(params[9]) || 1,
-      agreed_wastage_pct: parseFloat(params[10]) || 1.2,
-      received_weight: parseFloat(params[11]) || 0,
-      received_pieces: parseInt(params[12]) || 0,
-      status: params[13] || 'IN_PROGRESS',
-      fine_gold_balance_diff: parseFloat(params[14]) || 0,
-      notes: params[15] || '',
-      created_at: new Date().toISOString()
-    };
-    dataStore.karigar_orders.push(newKO);
-    saveToFile();
-    return { lastInsertRowid: newKO.id, changes: 1 };
-  }
-
-  if (cleanSql.includes('UPDATE karigar_orders')) {
-    const id = parseInt(params[params.length - 1]);
-    const ko = dataStore.karigar_orders.find(k => k.id === id);
-    if (ko) {
-      ko.received_weight = parseFloat(params[0]);
-      ko.received_pieces = parseInt(params[1]);
-      ko.status = 'COMPLETED';
-      ko.fine_gold_balance_diff = parseFloat(params[2]);
-      if (params[3]) ko.notes = params[3];
-      saveToFile();
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  // 17. old_gold_transactions
-  if (cleanSql.includes('SELECT') && cleanSql.includes('old_gold_transactions')) {
-    if (cleanSql.includes('WHERE linked_invoice_no = ?')) {
-      const invNo = params[0];
-      const og = dataStore.old_gold_transactions.find(o => o.linked_invoice_no === invNo);
-      return og || null;
-    }
-    if (cleanSql.includes('WHERE id = ?')) {
-      const og = dataStore.old_gold_transactions.find(o => o.id === parseInt(params[0]));
-      return og || null;
-    }
-    return mode === 'GET' ? dataStore.old_gold_transactions[0] : [...dataStore.old_gold_transactions];
-  }
-
-  if (cleanSql.includes('INSERT INTO old_gold_transactions')) {
-    dataStore.auto_ids.old_gold_transactions++;
-    const newOG = {
-      id: dataStore.auto_ids.old_gold_transactions,
-      receipt_no: params[0],
-      customer_name: params[1],
-      customer_phone: params[2] || '',
-      gross_weight: parseFloat(params[3]),
-      stone_dust_deduction: parseFloat(params[4]) || 0,
-      net_weight: parseFloat(params[5]),
-      purity_touch_pct: parseFloat(params[6]),
-      fine_gold_weight: parseFloat(params[7]),
-      valuation_rate_per_gram: parseFloat(params[8]),
-      total_valuation: parseFloat(params[9]),
-      settlement_mode: params[10] || 'INVOICE_CREDIT',
-      linked_invoice_no: params[11] || '',
-      notes: params[12] || '',
-      created_at: params[13] || new Date().toISOString()
-    };
-    dataStore.old_gold_transactions.push(newOG);
-    saveToFile();
-    return { lastInsertRowid: newOG.id, changes: 1 };
-  }
-
-  // 18. tray_audits
-  if (cleanSql.includes('SELECT') && cleanSql.includes('tray_audits')) {
-    if (cleanSql.includes('WHERE id = ?')) {
-      const audit = dataStore.tray_audits.find(a => a.id === parseInt(params[0]));
-      return audit || null;
-    }
-    return mode === 'GET' ? dataStore.tray_audits[0] : [...dataStore.tray_audits];
-  }
-
-  if (cleanSql.includes('INSERT INTO tray_audits')) {
-    dataStore.auto_ids.tray_audits++;
-    const newAudit = {
-      id: dataStore.auto_ids.tray_audits,
-      audit_date: params[0],
-      tray_name: params[1],
-      category: params[2],
-      metal_type: params[3],
-      system_items_count: parseInt(params[4]),
-      system_total_weight: parseFloat(params[5]),
-      physical_items_count: parseInt(params[6]),
-      physical_total_weight: parseFloat(params[7]),
-      variance_weight: parseFloat(params[8]),
-      audited_by: params[9],
-      notes: params[10] || '',
-      status: params[11] || 'RECONCILED',
-      created_at: new Date().toISOString()
-    };
-    dataStore.tray_audits.push(newAudit);
-    saveToFile();
-    return { lastInsertRowid: newAudit.id, changes: 1 };
-  }
-
-  return mode === 'GET' ? null : [];
-}
-
+// ─── Schema ─────────────────────────────────────────────────────────────────
 export function initDatabase() {
-  loadFromFile();
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS metal_rates (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      metal         TEXT    NOT NULL,
+      purity        TEXT    NOT NULL,
+      rate_per_gram REAL    NOT NULL,
+      currency      TEXT    NOT NULL DEFAULT 'INR',
+      updated_at    TEXT    NOT NULL
+    );
 
-  if (dataStore.metal_rates.length === 0) {
-    const defaultRates = [
-      { id: 1, metal: 'Gold', purity: '24K (999)', rate_per_gram: 7250.0, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 2, metal: 'Gold', purity: '22K (916)', rate_per_gram: 6750.0, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 3, metal: 'Gold', purity: '18K (750)', rate_per_gram: 5550.0, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 4, metal: 'Gold', purity: '14K (585)', rate_per_gram: 4350.0, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 5, metal: 'Silver', purity: '999 Fine', rate_per_gram: 88.5, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 6, metal: 'Silver', purity: '925 Sterling', rate_per_gram: 82.0, currency: 'INR', updated_at: new Date().toISOString() },
-      { id: 7, metal: 'Platinum', purity: '950 Pure', rate_per_gram: 3200.0, currency: 'INR', updated_at: new Date().toISOString() }
-    ];
-    dataStore.metal_rates = defaultRates;
-    dataStore.auto_ids.metal_rates = 7;
-  }
+    CREATE TABLE IF NOT EXISTS employees (
+      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+      name                    TEXT    NOT NULL,
+      email                   TEXT    DEFAULT '',
+      phone                   TEXT    NOT NULL,
+      role                    TEXT    NOT NULL DEFAULT 'SALES_EXECUTIVE',
+      target_monthly_revenue  REAL    DEFAULT 2000000,
+      target_monthly_grams    REAL    DEFAULT 300,
+      commission_rate_pct     REAL    DEFAULT 1.0,
+      avatar_color            TEXT    DEFAULT '#D97706',
+      active                  INTEGER DEFAULT 1,
+      created_at              TEXT    NOT NULL
+    );
 
-  if (dataStore.employees.length === 0) {
-    const staff = [
-      { id: 1, name: 'Aarav Verma', email: 'aarav.v@jewelflow.com', phone: '+91 98201 12345', role: 'SALES_EXECUTIVE', target_monthly_revenue: 2000000, target_monthly_grams: 300, commission_rate_pct: 1.2, avatar_color: '#E11D48', active: 1, created_at: new Date().toISOString() },
-      { id: 2, name: 'Pooja Patel', email: 'pooja.p@jewelflow.com', phone: '+91 98202 23456', role: 'SALES_EXECUTIVE', target_monthly_revenue: 2500000, target_monthly_grams: 380, commission_rate_pct: 1.5, avatar_color: '#7C3AED', active: 1, created_at: new Date().toISOString() },
-      { id: 3, name: 'Rohan Mehta', email: 'rohan.m@jewelflow.com', phone: '+91 98203 34567', role: 'WHOLESALE_AGENT', target_monthly_revenue: 4500000, target_monthly_grams: 700, commission_rate_pct: 0.8, avatar_color: '#059669', active: 1, created_at: new Date().toISOString() },
-      { id: 4, name: 'Neha Sharma', email: 'neha.s@jewelflow.com', phone: '+91 98204 45678', role: 'SALES_EXECUTIVE', target_monthly_revenue: 1800000, target_monthly_grams: 260, commission_rate_pct: 1.0, avatar_color: '#D97706', active: 1, created_at: new Date().toISOString() },
-      { id: 5, name: 'Vikram Sen', email: 'vikram.s@jewelflow.com', phone: '+91 98205 56789', role: 'WHOLESALE_AGENT', target_monthly_revenue: 5000000, target_monthly_grams: 800, commission_rate_pct: 0.75, avatar_color: '#2563EB', active: 1, created_at: new Date().toISOString() },
-      { id: 6, name: 'Kavita Deshmukh', email: 'kavita.d@jewelflow.com', phone: '+91 98206 67890', role: 'CASHIER', target_monthly_revenue: 1000000, target_monthly_grams: 150, commission_rate_pct: 0.5, avatar_color: '#0D9488', active: 1, created_at: new Date().toISOString() }
-    ];
-    dataStore.employees = staff;
-    dataStore.auto_ids.employees = 6;
-  }
+    CREATE TABLE IF NOT EXISTS customers (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      name              TEXT    NOT NULL,
+      phone             TEXT    NOT NULL,
+      email             TEXT    DEFAULT '',
+      type              TEXT    NOT NULL DEFAULT 'RETAIL_CUSTOMER',
+      gst_number        TEXT    DEFAULT '',
+      pan_card          TEXT    DEFAULT '',
+      address           TEXT    DEFAULT '',
+      fine_gold_balance REAL    DEFAULT 0,
+      cash_balance      REAL    DEFAULT 0,
+      loyalty_points    INTEGER DEFAULT 0,
+      created_at        TEXT    NOT NULL
+    );
 
-  if (dataStore.customers.length === 0) {
-    const customers = [
-      { id: 1, name: 'Meera Singhania', phone: '+91 98765 43210', email: 'meera@singhania.com', type: 'RETAIL_CUSTOMER', gst_number: '', pan_card: 'ABCPS1234F', address: 'Bandra West, Mumbai', fine_gold_balance: 0, cash_balance: 0, loyalty_points: 450, created_at: new Date().toISOString() },
-      { id: 2, name: 'Rajesh Gupta', phone: '+91 98111 22233', email: 'rajesh@gupta.com', type: 'RETAIL_CUSTOMER', gst_number: '', pan_card: 'BRRPG9876L', address: 'Juhu, Mumbai', fine_gold_balance: 0, cash_balance: 0, loyalty_points: 120, created_at: new Date().toISOString() },
-      { id: 3, name: 'Shree Laxmi Jewellers (Pune)', phone: '+91 98222 33344', email: 'orders@shreelaxmi.com', type: 'B2B_DEALER', gst_number: '27AAACS1234M1Z5', pan_card: 'AAACS1234M', address: 'Laxmi Road, Pune', fine_gold_balance: 48.50, cash_balance: 240000, loyalty_points: 0, created_at: new Date().toISOString() },
-      { id: 4, name: 'Mahalaxmi Ornaments (Surat)', phone: '+91 98333 44455', email: 'b2b@mahalaxmi.com', type: 'B2B_DEALER', gst_number: '24AABCM5678N1Z8', pan_card: 'AABCM5678N', address: 'Varachha, Surat', fine_gold_balance: -12.20, cash_balance: 0, loyalty_points: 0, created_at: new Date().toISOString() },
-      { id: 5, name: 'Ananya Roy', phone: '+91 98444 55566', email: 'ananya.roy@gmail.com', type: 'RETAIL_CUSTOMER', gst_number: '', pan_card: 'CPRYA5544K', address: 'Andheri East, Mumbai', fine_gold_balance: 0, cash_balance: 0, loyalty_points: 80, created_at: new Date().toISOString() }
-    ];
-    dataStore.customers = customers;
-    dataStore.auto_ids.customers = 5;
-  }
+    CREATE TABLE IF NOT EXISTS products (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      sku                 TEXT    NOT NULL,
+      barcode             TEXT    DEFAULT '',
+      title               TEXT    NOT NULL,
+      category            TEXT    NOT NULL,
+      metal_type          TEXT    NOT NULL,
+      purity              TEXT    NOT NULL,
+      gross_weight        REAL    NOT NULL,
+      net_weight          REAL    NOT NULL,
+      stone_weight        REAL    DEFAULT 0,
+      stone_type          TEXT    DEFAULT 'None',
+      stone_cents         REAL    DEFAULT 0,
+      stone_price         REAL    DEFAULT 0,
+      wastage_pct         REAL    DEFAULT 0,
+      making_charge_type  TEXT    DEFAULT 'PER_GRAM',
+      making_charge_value REAL    DEFAULT 0,
+      huid                TEXT    DEFAULT '',
+      counter_tray        TEXT    DEFAULT '',
+      item_type           TEXT    DEFAULT 'RETAIL_SINGLE',
+      pieces              INTEGER DEFAULT 1,
+      touch_pct           REAL    DEFAULT 91.6,
+      fine_metal_weight   REAL    DEFAULT 0,
+      status              TEXT    NOT NULL DEFAULT 'IN_STOCK',
+      cost_price          REAL    DEFAULT 0,
+      notes               TEXT    DEFAULT '',
+      created_at          TEXT    NOT NULL
+    );
 
-  if (dataStore.products.length === 0) {
-    const products = [
-      { id: 1, sku: 'JW-GLD-001', barcode: '8901001', title: 'Kundan Heritage Bridal Choker', category: 'Necklaces', metal_type: 'Gold', purity: '22K (916)', gross_weight: 48.50, net_weight: 42.00, stone_weight: 6.50, stone_type: 'Ruby & Emerald CZ', stone_cents: 32.5, stone_price: 18500, wastage_pct: 2.0, making_charge_type: 'PER_GRAM', making_charge_value: 650, huid: 'HUID916A8721', counter_tray: 'Showcase A - Tray 1', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 91.6, fine_metal_weight: 38.47, status: 'IN_STOCK', cost_price: 280000, notes: 'Handcrafted antique royal collection', created_at: new Date().toISOString() },
-      { id: 2, sku: 'JW-GLD-002', barcode: '8901002', title: 'Classic Calcutta Filigree Bangle (Pair)', category: 'Bangles', metal_type: 'Gold', purity: '22K (916)', gross_weight: 32.40, net_weight: 32.40, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 1.5, making_charge_type: 'PER_GRAM', making_charge_value: 480, huid: 'HUID916B1934', counter_tray: 'Showcase A - Tray 2', item_type: 'RETAIL_SINGLE', pieces: 2, touch_pct: 91.6, fine_metal_weight: 29.68, status: 'IN_STOCK', cost_price: 215000, notes: 'Seamless hollow laser finished', created_at: new Date().toISOString() },
-      { id: 3, sku: 'JW-GLD-003', barcode: '8901003', title: 'Temple Lakshmi Peacock Jhumka', category: 'Earrings', metal_type: 'Gold', purity: '22K (916)', gross_weight: 18.20, net_weight: 16.80, stone_weight: 1.40, stone_type: 'Synthetic Pearls & Garnet', stone_cents: 7.0, stone_price: 4500, wastage_pct: 2.5, making_charge_type: 'PER_GRAM', making_charge_value: 550, huid: 'HUID916C4491', counter_tray: 'Showcase A - Tray 3', item_type: 'RETAIL_SINGLE', pieces: 2, touch_pct: 91.6, fine_metal_weight: 15.39, status: 'IN_STOCK', cost_price: 115000, notes: 'South Indian traditional motif', created_at: new Date().toISOString() },
-      { id: 4, sku: 'JW-GLD-004', barcode: '8901004', title: 'Men Solid Rope Chain (24 inch)', category: 'Chains', metal_type: 'Gold', purity: '22K (916)', gross_weight: 24.60, net_weight: 24.60, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 1.0, making_charge_type: 'PER_GRAM', making_charge_value: 380, huid: 'HUID916D5820', counter_tray: 'Showcase B - Tray 1', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 91.6, fine_metal_weight: 22.53, status: 'IN_STOCK', cost_price: 165000, notes: 'Machine made heavy lock', created_at: new Date().toISOString() },
-      { id: 5, sku: 'JW-GLD-005', barcode: '8901005', title: 'Traditional Black Beaded Mangalsutra', category: 'Mangalsutra', metal_type: 'Gold', purity: '22K (916)', gross_weight: 15.80, net_weight: 13.50, stone_weight: 2.30, stone_type: 'Black Beads & CZ', stone_cents: 11.5, stone_price: 3200, wastage_pct: 1.5, making_charge_type: 'PER_GRAM', making_charge_value: 520, huid: 'HUID916E7712', counter_tray: 'Showcase B - Tray 2', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 91.6, fine_metal_weight: 12.37, status: 'IN_STOCK', cost_price: 95000, notes: 'Dual line stringing with gold pendant', created_at: new Date().toISOString() },
-      { id: 6, sku: 'JW-GLD-006', barcode: '8901006', title: 'Floral Daily Wear Ring', category: 'Rings', metal_type: 'Gold', purity: '22K (916)', gross_weight: 4.80, net_weight: 4.80, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 1.0, making_charge_type: 'PER_GRAM', making_charge_value: 420, huid: 'HUID916F8831', counter_tray: 'Showcase B - Tray 3', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 91.6, fine_metal_weight: 4.40, status: 'IN_STOCK', cost_price: 32000, notes: 'Die stamped high polish', created_at: new Date().toISOString() },
-      { id: 7, sku: 'JW-GLD-007', barcode: '8901007', title: 'Lord Ganesha 24K Pure Gold Coin 10g', category: 'Coins & Bars', metal_type: 'Gold', purity: '24K (999)', gross_weight: 10.00, net_weight: 10.00, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 0.0, making_charge_type: 'FIXED', making_charge_value: 350, huid: 'HUID999G1010', counter_tray: 'Vault Safe - Coin Box', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 99.9, fine_metal_weight: 9.99, status: 'IN_STOCK', cost_price: 72000, notes: 'Tamper-proof blister packed with cert', created_at: new Date().toISOString() },
-      { id: 8, sku: 'JW-GLD-008', barcode: '8901008', title: 'Lakshmi 24K Pure Gold Bar 20g', category: 'Coins & Bars', metal_type: 'Gold', purity: '24K (999)', gross_weight: 20.00, net_weight: 20.00, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 0.0, making_charge_type: 'FIXED', making_charge_value: 500, huid: 'HUID999H2020', counter_tray: 'Vault Safe - Coin Box', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 99.9, fine_metal_weight: 19.98, status: 'IN_STOCK', cost_price: 144000, notes: 'NABL accredited lab certified bar', created_at: new Date().toISOString() },
+    CREATE TABLE IF NOT EXISTS sales_invoices (
+      id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_no                 TEXT    NOT NULL UNIQUE,
+      type                       TEXT    NOT NULL,
+      customer_id                INTEGER,
+      customer_name              TEXT    NOT NULL,
+      customer_phone             TEXT    DEFAULT '',
+      employee_id                INTEGER NOT NULL,
+      employee_name              TEXT    NOT NULL,
+      subtotal                   REAL    NOT NULL,
+      making_charges             REAL    DEFAULT 0,
+      stone_charges              REAL    DEFAULT 0,
+      old_gold_deduction         REAL    DEFAULT 0,
+      discount                   REAL    DEFAULT 0,
+      tax_amount                 REAL    DEFAULT 0,
+      total_amount               REAL    NOT NULL,
+      fine_gold_settlement_grams REAL    DEFAULT 0,
+      cash_paid                  REAL    DEFAULT 0,
+      payment_mode               TEXT    DEFAULT 'CASH',
+      status                     TEXT    DEFAULT 'PAID',
+      notes                      TEXT    DEFAULT '',
+      created_at                 TEXT    NOT NULL
+    );
 
-      { id: 9, sku: 'JW-DIA-001', barcode: '8902001', title: 'Solitaire Princess Cut Engagement Ring', category: 'Rings', metal_type: 'Gold', purity: '18K (750)', gross_weight: 5.20, net_weight: 5.00, stone_weight: 0.20, stone_type: 'Natural Diamond VVS1-F', stone_cents: 100, stone_price: 85000, wastage_pct: 0.0, making_charge_type: 'FIXED', making_charge_value: 7500, huid: 'HUID750D1122', counter_tray: 'Diamond Vault - Tray 1', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 75.0, fine_metal_weight: 3.75, status: 'IN_STOCK', cost_price: 98000, notes: 'IGI Certified 1.00ct centre stone', created_at: new Date().toISOString() },
-      { id: 10, sku: 'JW-DIA-002', barcode: '8902002', title: 'Eternity Tennis Bracelet (3.5ct)', category: 'Bangles', metal_type: 'Gold', purity: '18K (750)', gross_weight: 16.50, net_weight: 15.80, stone_weight: 0.70, stone_type: 'Natural Diamonds VS-GH', stone_cents: 350, stone_price: 165000, wastage_pct: 0.0, making_charge_type: 'FIXED', making_charge_value: 14000, huid: 'HUID750D2233', counter_tray: 'Diamond Vault - Tray 2', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 75.0, fine_metal_weight: 11.85, status: 'IN_STOCK', cost_price: 210000, notes: 'Four-prong setting, 52 round brilliants', created_at: new Date().toISOString() },
-      { id: 11, sku: 'JW-DIA-003', barcode: '8902003', title: 'Rose Gold Pear Halo Pendant with Chain', category: 'Pendants', metal_type: 'Gold', purity: '18K (750)', gross_weight: 6.80, net_weight: 6.45, stone_weight: 0.35, stone_type: 'Natural Diamonds SI-IJ', stone_cents: 175, stone_price: 42000, wastage_pct: 0.0, making_charge_type: 'FIXED', making_charge_value: 4500, huid: 'HUID750D3344', counter_tray: 'Diamond Vault - Tray 3', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 75.0, fine_metal_weight: 4.84, status: 'IN_STOCK', cost_price: 68000, notes: 'Includes 18k 16-inch rose gold chain', created_at: new Date().toISOString() },
+    CREATE TABLE IF NOT EXISTS sales_items (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_id         INTEGER NOT NULL,
+      product_id         INTEGER,
+      sku                TEXT    DEFAULT '',
+      title              TEXT    NOT NULL,
+      category           TEXT    DEFAULT '',
+      metal_type         TEXT    DEFAULT '',
+      purity             TEXT    DEFAULT '',
+      gross_weight       REAL    DEFAULT 0,
+      net_weight         REAL    DEFAULT 0,
+      stone_weight       REAL    DEFAULT 0,
+      metal_rate_applied REAL    DEFAULT 0,
+      making_charge      REAL    DEFAULT 0,
+      stone_price        REAL    DEFAULT 0,
+      total_item_price   REAL    NOT NULL,
+      pieces             INTEGER DEFAULT 1,
+      created_at         TEXT    NOT NULL
+    );
 
-      { id: 12, sku: 'JW-SLV-001', barcode: '8903001', title: 'Antique Temple Silver Pooja Thali Set', category: 'Pooja Items', metal_type: 'Silver', purity: '999 Fine', gross_weight: 450.00, net_weight: 450.00, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 0.5, making_charge_type: 'PER_GRAM', making_charge_value: 18, huid: 'HUIDSLV001', counter_tray: 'Silver Showcase - Section A', item_type: 'RETAIL_SINGLE', pieces: 1, touch_pct: 99.9, fine_metal_weight: 449.55, status: 'IN_STOCK', cost_price: 36000, notes: 'Includes thali, diya, agarbatti stand, bell', created_at: new Date().toISOString() },
-      { id: 13, sku: 'JW-SLV-002', barcode: '8903002', title: 'Bridal Ghungroo Payal Pair', category: 'Payal', metal_type: 'Silver', purity: '925 Sterling', gross_weight: 125.00, net_weight: 125.00, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 2.0, making_charge_type: 'PER_GRAM', making_charge_value: 22, huid: 'HUIDSLV002', counter_tray: 'Silver Showcase - Section B', item_type: 'RETAIL_SINGLE', pieces: 2, touch_pct: 92.5, fine_metal_weight: 115.62, status: 'IN_STOCK', cost_price: 10500, notes: 'Heavy ghungroo melody bells', created_at: new Date().toISOString() },
+    CREATE TABLE IF NOT EXISTS stock_ledger (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id     INTEGER,
+      sku            TEXT    DEFAULT '',
+      title          TEXT    DEFAULT '',
+      movement_type  TEXT    NOT NULL,
+      gross_weight   REAL    DEFAULT 0,
+      net_weight     REAL    DEFAULT 0,
+      reference_id   TEXT    DEFAULT '',
+      reference_type TEXT    DEFAULT '',
+      notes          TEXT    DEFAULT '',
+      timestamp      TEXT    NOT NULL
+    );
 
-      { id: 14, sku: 'WS-LOT-22K-01', barcode: '8904001', title: 'Wholesale Lot: 22K Casting Rings (25 pcs)', category: 'Rings', metal_type: 'Gold', purity: '22K (916)', gross_weight: 125.80, net_weight: 125.80, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 0.0, making_charge_type: 'PER_GRAM', making_charge_value: 280, huid: 'LOT-22K-RNG25', counter_tray: 'Wholesale Vault - Drawer 1', item_type: 'WHOLESALE_LOT', pieces: 25, touch_pct: 91.6, fine_metal_weight: 115.23, status: 'IN_STOCK', cost_price: 820000, notes: 'Assorted sizes #12 to #22, tested touch 91.65%', created_at: new Date().toISOString() },
-      { id: 15, sku: 'WS-LOT-22K-02', barcode: '8904002', title: 'Wholesale Lot: 22K Lightweight Chains (10 pcs)', category: 'Chains', metal_type: 'Gold', purity: '22K (916)', gross_weight: 84.50, net_weight: 84.50, stone_weight: 0.0, stone_type: 'None', stone_cents: 0, stone_price: 0, wastage_pct: 0.0, making_charge_type: 'PER_GRAM', making_charge_value: 260, huid: 'LOT-22K-CHN10', counter_tray: 'Wholesale Vault - Drawer 2', item_type: 'WHOLESALE_LOT', pieces: 10, touch_pct: 91.6, fine_metal_weight: 77.40, status: 'IN_STOCK', cost_price: 555000, notes: 'Box chains and Singapore link mixed pack', created_at: new Date().toISOString() },
-      { id: 16, sku: 'WS-LOT-18K-01', barcode: '8904003', title: 'Wholesale Lot: 18K CZ Designer Studs (20 pairs)', category: 'Earrings', metal_type: 'Gold', purity: '18K (750)', gross_weight: 62.00, net_weight: 58.00, stone_weight: 4.0, stone_type: 'Swiss CZ Grade AAA', stone_cents: 20.0, stone_price: 8000, wastage_pct: 0.0, making_charge_type: 'PER_GRAM', making_charge_value: 320, huid: 'LOT-18K-STD20', counter_tray: 'Wholesale Vault - Drawer 3', item_type: 'WHOLESALE_LOT', pieces: 20, touch_pct: 75.0, fine_metal_weight: 43.50, status: 'IN_STOCK', cost_price: 315000, notes: 'Screw-back micro pave setting', created_at: new Date().toISOString() }
-    ];
-    dataStore.products = products;
-    dataStore.auto_ids.products = 16;
-  }
+    CREATE TABLE IF NOT EXISTS karigar_orders (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_no             TEXT    NOT NULL UNIQUE,
+      karigar_name         TEXT    NOT NULL,
+      karigar_phone        TEXT    DEFAULT '',
+      issue_date           TEXT    NOT NULL,
+      due_date             TEXT    DEFAULT '',
+      raw_metal_type       TEXT    NOT NULL,
+      raw_metal_purity     TEXT    NOT NULL,
+      raw_metal_weight     REAL    NOT NULL,
+      expected_item_type   TEXT    DEFAULT '',
+      expected_pieces      INTEGER DEFAULT 1,
+      agreed_wastage_pct   REAL    DEFAULT 1.2,
+      received_weight      REAL    DEFAULT 0,
+      received_pieces      INTEGER DEFAULT 0,
+      status               TEXT    DEFAULT 'IN_PROGRESS',
+      fine_gold_balance_diff REAL  DEFAULT 0,
+      notes                TEXT    DEFAULT '',
+      created_at           TEXT    NOT NULL
+    );
 
-  if (dataStore.karigar_orders.length === 0) {
-    const orders = [
-      { id: 1, order_no: 'KG-2026-001', karigar_name: 'Ramesh Sonar & Sons', karigar_phone: '+91 98233 11223', issue_date: '2026-08-20', due_date: '2026-09-02', raw_metal_type: 'Gold Bullion', raw_metal_purity: '24K (999)', raw_metal_weight: 100.00, expected_item_type: '22K Antique Bangles', expected_pieces: 4, agreed_wastage_pct: 1.2, received_weight: 0.0, received_pieces: 0, status: 'IN_PROGRESS', fine_gold_balance_diff: 0, notes: 'Issued 100g 999 gold bar for antique die casting', created_at: new Date().toISOString() },
-      { id: 2, order_no: 'KG-2026-002', karigar_name: 'Bengal Fine Gold Art (Bablu Da)', karigar_phone: '+91 98344 55667', issue_date: '2026-08-15', due_date: '2026-08-28', raw_metal_type: 'Gold Bullion', raw_metal_purity: '24K (999)', raw_metal_weight: 65.50, expected_item_type: '22K Filigree Necklace', expected_pieces: 1, agreed_wastage_pct: 1.5, received_weight: 69.80, received_pieces: 1, status: 'COMPLETED', fine_gold_balance_diff: -0.35, notes: 'Completed with superior filigree touch 91.7%', created_at: new Date().toISOString() },
-      { id: 3, order_no: 'KG-2026-003', karigar_name: 'Surat Diamond Setters (Deepak)', karigar_phone: '+91 98455 77889', issue_date: '2026-08-25', due_date: '2026-09-05', raw_metal_type: 'Gold Alloy + Solitaires', raw_metal_purity: '18K (750)', raw_metal_weight: 40.00, expected_item_type: '18K Solitaire Rings', expected_pieces: 8, agreed_wastage_pct: 1.0, received_weight: 0.0, received_pieces: 0, status: 'IN_PROGRESS', fine_gold_balance_diff: 0, notes: 'Issued 40g 18k casted mountings with 8 certified diamonds', created_at: new Date().toISOString() }
-    ];
-    dataStore.karigar_orders = orders;
-    dataStore.auto_ids.karigar_orders = 3;
-  }
+    CREATE TABLE IF NOT EXISTS old_gold_transactions (
+      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+      receipt_no              TEXT    NOT NULL UNIQUE,
+      customer_name           TEXT    NOT NULL,
+      customer_phone          TEXT    DEFAULT '',
+      gross_weight            REAL    NOT NULL,
+      stone_dust_deduction    REAL    DEFAULT 0,
+      net_weight              REAL    NOT NULL,
+      purity_touch_pct        REAL    NOT NULL,
+      fine_gold_weight        REAL    NOT NULL,
+      valuation_rate_per_gram REAL    NOT NULL,
+      total_valuation         REAL    NOT NULL,
+      settlement_mode         TEXT    DEFAULT 'INVOICE_CREDIT',
+      linked_invoice_no       TEXT    DEFAULT '',
+      notes                   TEXT    DEFAULT '',
+      created_at              TEXT    NOT NULL
+    );
 
-  if (dataStore.sales_invoices.length === 0) {
-    seedSales();
-  }
+    CREATE TABLE IF NOT EXISTS tray_audits (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      audit_date            TEXT    NOT NULL,
+      tray_name             TEXT    NOT NULL,
+      category              TEXT    DEFAULT '',
+      metal_type            TEXT    DEFAULT '',
+      system_items_count    INTEGER DEFAULT 0,
+      system_total_weight   REAL    DEFAULT 0,
+      physical_items_count  INTEGER DEFAULT 0,
+      physical_total_weight REAL    DEFAULT 0,
+      variance_weight       REAL    DEFAULT 0,
+      audited_by            TEXT    DEFAULT '',
+      notes                 TEXT    DEFAULT '',
+      status                TEXT    DEFAULT 'RECONCILED',
+      created_at            TEXT    NOT NULL
+    );
+  `);
 
-  saveToFile();
+  _seedIfEmpty();
+  _migrateFromJSON();
+  _createBackup();
+
+  console.log('✅ JewelFlow SQLite database ready:', DB_PATH);
 }
 
-function seedSales() {
-  dataStore.sales_invoices = [
-    { id: 1, invoice_no: 'INV-20260825-1001', type: 'RETAIL_SALE', customer_id: 1, customer_name: 'Meera Singhania', customer_phone: '+91 98765 43210', employee_id: 1, employee_name: 'Aarav Verma', subtotal: 215000, making_charges: 15552, stone_charges: 0, old_gold_deduction: 25000, discount: 2000, tax_amount: 6106.56, total_amount: 209658.56, fine_gold_settlement_grams: 0, cash_paid: 209658.56, payment_mode: 'CARD', status: 'PAID', notes: 'Retail Wedding purchase', created_at: '2026-08-25T14:20:00.000Z' },
-    { id: 2, invoice_no: 'INV-20260826-1002', type: 'RETAIL_SALE', customer_id: 2, customer_name: 'Rajesh Gupta', customer_phone: '+91 98111 22233', employee_id: 2, employee_name: 'Pooja Patel', subtotal: 335000, making_charges: 27300, stone_charges: 18500, old_gold_deduction: 0, discount: 5000, tax_amount: 11274, total_amount: 387074, fine_gold_settlement_grams: 0, cash_paid: 387074, payment_mode: 'UPI', status: 'PAID', notes: 'Bridal Set purchase', created_at: '2026-08-26T17:45:00.000Z' },
-    { id: 3, invoice_no: 'WS-20260827-1003', type: 'WHOLESALE_CHALLAN', customer_id: 3, customer_name: 'Shree Laxmi Jewellers (Pune)', customer_phone: '+91 98222 33344', employee_id: 3, employee_name: 'Rohan Mehta', subtotal: 845000, making_charges: 35224, stone_charges: 0, old_gold_deduction: 0, discount: 0, tax_amount: 0, total_amount: 880224, fine_gold_settlement_grams: 115.23, cash_paid: 35224, payment_mode: 'FINE_GOLD_PLUS_MAKING', status: 'PAID', notes: 'Settled 115.23g Fine Gold Bar + ₹35,224 cash making charges', created_at: '2026-08-27T11:30:00.000Z' },
-    { id: 4, invoice_no: 'INV-20260828-1004', type: 'RETAIL_SALE', customer_id: 5, customer_name: 'Ananya Roy', customer_phone: '+91 98444 55566', employee_id: 4, employee_name: 'Neha Sharma', subtotal: 112000, making_charges: 7500, stone_charges: 85000, old_gold_deduction: 0, discount: 2500, tax_amount: 6060, total_amount: 208060, fine_gold_settlement_grams: 0, cash_paid: 208060, payment_mode: 'CARD', status: 'PAID', notes: 'Solitaire engagement purchase', created_at: '2026-08-28T16:10:00.000Z' },
-    { id: 5, invoice_no: 'WS-20260829-1005', type: 'WHOLESALE_CHALLAN', customer_id: 4, customer_name: 'Mahalaxmi Ornaments (Surat)', customer_phone: '+91 98333 44455', employee_id: 5, employee_name: 'Vikram Sen', subtotal: 570000, making_charges: 21970, stone_charges: 0, old_gold_deduction: 0, discount: 0, tax_amount: 0, total_amount: 591970, fine_gold_settlement_grams: 77.40, cash_paid: 21970, payment_mode: 'FINE_GOLD_PLUS_MAKING', status: 'PAID', notes: 'Dispatched via secure armored logistics with challan', created_at: '2026-08-29T12:00:00.000Z' }
-  ];
-  dataStore.auto_ids.sales_invoices = 5;
+// ─── Transaction helper (wraps BEGIN/COMMIT/ROLLBACK) ───────────────────────
+// Provides db.transaction(fn) compatibility so controllers work unchanged
+db.transaction = function(fn) {
+  return function(...args) {
+    db.exec('BEGIN');
+    try {
+      const result = fn(...args);
+      db.exec('COMMIT');
+      return result;
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+  };
+};
 
-  dataStore.sales_items = [
-    { id: 1, invoice_id: 1, product_id: 2, sku: 'JW-GLD-002-S1', title: 'Classic Calcutta Filigree Bangle', category: 'Bangles', metal_type: 'Gold', purity: '22K (916)', gross_weight: 32.40, net_weight: 32.40, stone_weight: 0.0, metal_rate_applied: 6650.0, making_charge: 15552, stone_price: 0, total_item_price: 230552, pieces: 2, created_at: '2026-08-25T14:20:00.000Z' },
-    { id: 2, invoice_id: 2, product_id: 1, sku: 'JW-GLD-001-S2', title: 'Kundan Heritage Bridal Choker', category: 'Necklaces', metal_type: 'Gold', purity: '22K (916)', gross_weight: 48.50, net_weight: 42.00, stone_weight: 6.50, metal_rate_applied: 6700.0, making_charge: 27300, stone_price: 18500, total_item_price: 327200, pieces: 1, created_at: '2026-08-26T17:45:00.000Z' },
-    { id: 3, invoice_id: 3, product_id: 14, sku: 'WS-LOT-22K-01-S3', title: 'Wholesale Lot: 22K Casting Rings (25 pcs)', category: 'Rings', metal_type: 'Gold', purity: '22K (916)', gross_weight: 125.80, net_weight: 125.80, stone_weight: 0.0, metal_rate_applied: 6720.0, making_charge: 35224, stone_price: 0, total_item_price: 880224, pieces: 25, created_at: '2026-08-27T11:30:00.000Z' },
-    { id: 4, invoice_id: 4, product_id: 9, sku: 'JW-DIA-001-S4', title: 'Solitaire Princess Cut Engagement Ring', category: 'Rings', metal_type: 'Gold', purity: '18K (750)', gross_weight: 5.20, net_weight: 5.00, stone_weight: 0.20, metal_rate_applied: 5500.0, making_charge: 7500, stone_price: 85000, total_item_price: 120000, pieces: 1, created_at: '2026-08-28T16:10:00.000Z' },
-    { id: 5, invoice_id: 5, product_id: 15, sku: 'WS-LOT-22K-02-S5', title: 'Wholesale Lot: 22K Lightweight Chains (10 pcs)', category: 'Chains', metal_type: 'Gold', purity: '22K (916)', gross_weight: 84.50, net_weight: 84.50, stone_weight: 0.0, metal_rate_applied: 6745.0, making_charge: 21970, stone_price: 0, total_item_price: 591970, pieces: 10, created_at: '2026-08-29T12:00:00.000Z' }
-  ];
-  dataStore.auto_ids.sales_items = 5;
+// ─── Seed defaults only if tables are empty ──────────────────────────────────
+function _seedIfEmpty() {
+  const now = new Date().toISOString();
 
-  dataStore.old_gold_transactions = [
-    { id: 1, receipt_no: 'OG-20260825-1001', customer_name: 'Meera Singhania', customer_phone: '+91 98765 43210', gross_weight: 4.2, stone_dust_deduction: 0.2, net_weight: 4.0, purity_touch_pct: 87.5, fine_gold_weight: 3.5, valuation_rate_per_gram: 6250, total_valuation: 25000, settlement_mode: 'INVOICE_CREDIT', linked_invoice_no: 'INV-20260825-1001', notes: 'Exchanged 22k old broken ring', created_at: '2026-08-25T14:15:00.000Z' }
-  ];
-  dataStore.auto_ids.old_gold_transactions = 1;
+  const rateCount = db.prepare('SELECT COUNT(*) as c FROM metal_rates').get();
+  if (rateCount.c === 0) {
+    const ins = db.prepare(`INSERT INTO metal_rates (metal, purity, rate_per_gram, currency, updated_at) VALUES (?, ?, ?, 'INR', ?)`);
+    db.exec('BEGIN');
+    ins.run('Gold',     '24K (999)',   7250.0, now);
+    ins.run('Gold',     '22K (916)',   6750.0, now);
+    ins.run('Gold',     '18K (750)',   5550.0, now);
+    ins.run('Gold',     '14K (585)',   4350.0, now);
+    ins.run('Silver',   '999 Fine',     88.5,  now);
+    ins.run('Silver',   '925 Sterling', 82.0,  now);
+    ins.run('Platinum', '950 Pure',   3200.0,  now);
+    db.exec('COMMIT');
+  }
+
+  const empCount = db.prepare('SELECT COUNT(*) as c FROM employees').get();
+  if (empCount.c === 0) {
+    const ins = db.prepare(`
+      INSERT INTO employees (name, email, phone, role, target_monthly_revenue, target_monthly_grams, commission_rate_pct, avatar_color, active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `);
+    db.exec('BEGIN');
+    ins.run('Aarav Verma',     'aarav.v@jewelflow.com',  '+91 98201 12345', 'SALES_EXECUTIVE',  2000000, 300, 1.2, '#E11D48', now);
+    ins.run('Pooja Patel',     'pooja.p@jewelflow.com',  '+91 98202 23456', 'SALES_EXECUTIVE',  2500000, 380, 1.5, '#7C3AED', now);
+    ins.run('Rohan Mehta',     'rohan.m@jewelflow.com',  '+91 98203 34567', 'WHOLESALE_AGENT',  4500000, 700, 0.8, '#059669', now);
+    ins.run('Neha Sharma',     'neha.s@jewelflow.com',   '+91 98204 45678', 'SALES_EXECUTIVE',  1800000, 260, 1.0, '#D97706', now);
+    ins.run('Vikram Sen',      'vikram.s@jewelflow.com', '+91 98205 56789', 'WHOLESALE_AGENT',  5000000, 800, 0.75,'#2563EB', now);
+    ins.run('Kavita Deshmukh', 'kavita.d@jewelflow.com', '+91 98206 67890', 'CASHIER',          1000000, 150, 0.5, '#0D9488', now);
+    db.exec('COMMIT');
+  }
+
+  const custCount = db.prepare('SELECT COUNT(*) as c FROM customers').get();
+  if (custCount.c === 0) {
+    const ins = db.prepare(`
+      INSERT INTO customers (name, phone, email, type, gst_number, pan_card, address, fine_gold_balance, cash_balance, loyalty_points, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    db.exec('BEGIN');
+    ins.run('Meera Singhania',              '+91 98765 43210', 'meera@singhania.com',  'RETAIL_CUSTOMER', '',                 'ABCPS1234F', 'Bandra West, Mumbai',  0,      0,      450, now);
+    ins.run('Rajesh Gupta',                 '+91 98111 22233', 'rajesh@gupta.com',     'RETAIL_CUSTOMER', '',                 'BRRPG9876L', 'Juhu, Mumbai',         0,      0,      120, now);
+    ins.run('Shree Laxmi Jewellers (Pune)', '+91 98222 33344', 'orders@shreelaxmi.com','B2B_DEALER',      '27AAACS1234M1Z5',  'AAACS1234M', 'Laxmi Road, Pune',     48.50,  240000, 0,   now);
+    ins.run('Mahalaxmi Ornaments (Surat)',  '+91 98333 44455', 'b2b@mahalaxmi.com',    'B2B_DEALER',      '24AABCM5678N1Z8',  'AABCM5678N', 'Varachha, Surat',      -12.20, 0,      0,   now);
+    ins.run('Ananya Roy',                   '+91 98444 55566', 'ananya.roy@gmail.com', 'RETAIL_CUSTOMER', '',                 'CPRYA5544K', 'Andheri East, Mumbai', 0,      0,      80,  now);
+    db.exec('COMMIT');
+  }
+
+  const prodCount = db.prepare('SELECT COUNT(*) as c FROM products').get();
+  if (prodCount.c === 0) {
+    const ins = db.prepare(`
+      INSERT INTO products (sku,barcode,title,category,metal_type,purity,gross_weight,net_weight,stone_weight,stone_type,stone_cents,stone_price,wastage_pct,making_charge_type,making_charge_value,huid,counter_tray,item_type,pieces,touch_pct,fine_metal_weight,status,cost_price,notes,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `);
+    db.exec('BEGIN');
+    ins.run('JW-GLD-001','8901001','Kundan Heritage Bridal Choker','Necklaces','Gold','22K (916)',48.5,42.0,6.5,'Ruby & Emerald CZ',32.5,18500,2.0,'PER_GRAM',650,'HUID916A8721','Showcase A - Tray 1','RETAIL_SINGLE',1,91.6,38.47,'IN_STOCK',280000,'Handcrafted antique royal collection',now);
+    ins.run('JW-GLD-002','8901002','Classic Calcutta Filigree Bangle (Pair)','Bangles','Gold','22K (916)',32.4,32.4,0,'None',0,0,1.5,'PER_GRAM',480,'HUID916B1934','Showcase A - Tray 2','RETAIL_SINGLE',2,91.6,29.68,'IN_STOCK',215000,'Seamless hollow laser finished',now);
+    ins.run('JW-GLD-003','8901003','Temple Lakshmi Peacock Jhumka','Earrings','Gold','22K (916)',18.2,16.8,1.4,'Synthetic Pearls & Garnet',7.0,4500,2.5,'PER_GRAM',550,'HUID916C4491','Showcase A - Tray 3','RETAIL_SINGLE',2,91.6,15.39,'IN_STOCK',115000,'South Indian traditional motif',now);
+    ins.run('JW-GLD-004','8901004','Men Solid Rope Chain (24 inch)','Chains','Gold','22K (916)',24.6,24.6,0,'None',0,0,1.0,'PER_GRAM',380,'HUID916D5820','Showcase B - Tray 1','RETAIL_SINGLE',1,91.6,22.53,'IN_STOCK',165000,'Machine made heavy lock',now);
+    ins.run('JW-GLD-005','8901005','Traditional Black Beaded Mangalsutra','Mangalsutra','Gold','22K (916)',15.8,13.5,2.3,'Black Beads & CZ',11.5,3200,1.5,'PER_GRAM',520,'HUID916E7712','Showcase B - Tray 2','RETAIL_SINGLE',1,91.6,12.37,'IN_STOCK',95000,'Dual line stringing with gold pendant',now);
+    ins.run('JW-GLD-006','8901006','Floral Daily Wear Ring','Rings','Gold','22K (916)',4.8,4.8,0,'None',0,0,1.0,'PER_GRAM',420,'HUID916F8831','Showcase B - Tray 3','RETAIL_SINGLE',1,91.6,4.40,'IN_STOCK',32000,'Die stamped high polish',now);
+    ins.run('JW-GLD-007','8901007','Lord Ganesha 24K Pure Gold Coin 10g','Coins & Bars','Gold','24K (999)',10.0,10.0,0,'None',0,0,0,'FIXED',350,'HUID999G1010','Vault Safe - Coin Box','RETAIL_SINGLE',1,99.9,9.99,'IN_STOCK',72000,'Tamper-proof blister packed with cert',now);
+    ins.run('JW-GLD-008','8901008','Lakshmi 24K Pure Gold Bar 20g','Coins & Bars','Gold','24K (999)',20.0,20.0,0,'None',0,0,0,'FIXED',500,'HUID999H2020','Vault Safe - Coin Box','RETAIL_SINGLE',1,99.9,19.98,'IN_STOCK',144000,'NABL accredited lab certified bar',now);
+    ins.run('JW-DIA-001','8902001','Solitaire Princess Cut Engagement Ring','Rings','Gold','18K (750)',5.2,5.0,0.2,'Natural Diamond VVS1-F',100,85000,0,'FIXED',7500,'HUID750D1122','Diamond Vault - Tray 1','RETAIL_SINGLE',1,75.0,3.75,'IN_STOCK',98000,'IGI Certified 1.00ct centre stone',now);
+    ins.run('JW-DIA-002','8902002','Eternity Tennis Bracelet (3.5ct)','Bangles','Gold','18K (750)',16.5,15.8,0.7,'Natural Diamonds VS-GH',350,165000,0,'FIXED',14000,'HUID750D2233','Diamond Vault - Tray 2','RETAIL_SINGLE',1,75.0,11.85,'IN_STOCK',210000,'Four-prong setting, 52 round brilliants',now);
+    ins.run('JW-DIA-003','8902003','Rose Gold Pear Halo Pendant with Chain','Pendants','Gold','18K (750)',6.8,6.45,0.35,'Natural Diamonds SI-IJ',175,42000,0,'FIXED',4500,'HUID750D3344','Diamond Vault - Tray 3','RETAIL_SINGLE',1,75.0,4.84,'IN_STOCK',68000,'Includes 18k 16-inch rose gold chain',now);
+    ins.run('JW-SLV-001','8903001','Antique Temple Silver Pooja Thali Set','Pooja Items','Silver','999 Fine',450.0,450.0,0,'None',0,0,0.5,'PER_GRAM',18,'HUIDSLV001','Silver Showcase - Section A','RETAIL_SINGLE',1,99.9,449.55,'IN_STOCK',36000,'Includes thali, diya, agarbatti stand, bell',now);
+    ins.run('JW-SLV-002','8903002','Bridal Ghungroo Payal Pair','Payal','Silver','925 Sterling',125.0,125.0,0,'None',0,0,2.0,'PER_GRAM',22,'HUIDSLV002','Silver Showcase - Section B','RETAIL_SINGLE',2,92.5,115.62,'IN_STOCK',10500,'Heavy ghungroo melody bells',now);
+    ins.run('WS-LOT-22K-01','8904001','Wholesale Lot: 22K Casting Rings (25 pcs)','Rings','Gold','22K (916)',125.8,125.8,0,'None',0,0,0,'PER_GRAM',280,'LOT-22K-RNG25','Wholesale Vault - Drawer 1','WHOLESALE_LOT',25,91.6,115.23,'IN_STOCK',820000,'Assorted sizes #12 to #22',now);
+    ins.run('WS-LOT-22K-02','8904002','Wholesale Lot: 22K Lightweight Chains (10 pcs)','Chains','Gold','22K (916)',84.5,84.5,0,'None',0,0,0,'PER_GRAM',260,'LOT-22K-CHN10','Wholesale Vault - Drawer 2','WHOLESALE_LOT',10,91.6,77.40,'IN_STOCK',555000,'Box chains and Singapore link mixed pack',now);
+    ins.run('WS-LOT-18K-01','8904003','Wholesale Lot: 18K CZ Designer Studs (20 pairs)','Earrings','Gold','18K (750)',62.0,58.0,4.0,'Swiss CZ Grade AAA',20.0,8000,0,'PER_GRAM',320,'LOT-18K-STD20','Wholesale Vault - Drawer 3','WHOLESALE_LOT',20,75.0,43.50,'IN_STOCK',315000,'Screw-back micro pave setting',now);
+    db.exec('COMMIT');
+  }
+
+  const invCount = db.prepare('SELECT COUNT(*) as c FROM sales_invoices').get();
+  if (invCount.c === 0) {
+    _seedSalesData();
+  }
+}
+
+function _seedSalesData() {
+  const now = new Date().toISOString();
+  const ins = db.prepare(`
+    INSERT INTO sales_invoices
+      (invoice_no,type,customer_id,customer_name,customer_phone,employee_id,employee_name,
+       subtotal,making_charges,stone_charges,old_gold_deduction,discount,tax_amount,
+       total_amount,fine_gold_settlement_grams,cash_paid,payment_mode,status,notes,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+  const insItem = db.prepare(`
+    INSERT INTO sales_items
+      (invoice_id,product_id,sku,title,category,metal_type,purity,gross_weight,net_weight,
+       stone_weight,metal_rate_applied,making_charge,stone_price,total_item_price,pieces,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+  const insOG = db.prepare(`
+    INSERT INTO old_gold_transactions
+      (receipt_no,customer_name,customer_phone,gross_weight,stone_dust_deduction,net_weight,
+       purity_touch_pct,fine_gold_weight,valuation_rate_per_gram,total_valuation,
+       settlement_mode,linked_invoice_no,notes,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+
+  db.exec('BEGIN');
+  const i1 = ins.run('INV-20260825-1001','RETAIL_SALE',1,'Meera Singhania','+91 98765 43210',1,'Aarav Verma',215000,15552,0,25000,2000,6106.56,209658.56,0,209658.56,'CARD','PAID','Retail Wedding purchase','2026-08-25T14:20:00.000Z');
+  insItem.run(i1.lastInsertRowid,2,'JW-GLD-002-S1','Classic Calcutta Filigree Bangle','Bangles','Gold','22K (916)',32.4,32.4,0,6650,15552,0,230552,2,'2026-08-25T14:20:00.000Z');
+
+  const i2 = ins.run('INV-20260826-1002','RETAIL_SALE',2,'Rajesh Gupta','+91 98111 22233',2,'Pooja Patel',335000,27300,18500,0,5000,11274,387074,0,387074,'UPI','PAID','Bridal Set purchase','2026-08-26T17:45:00.000Z');
+  insItem.run(i2.lastInsertRowid,1,'JW-GLD-001-S2','Kundan Heritage Bridal Choker','Necklaces','Gold','22K (916)',48.5,42.0,6.5,6700,27300,18500,327200,1,'2026-08-26T17:45:00.000Z');
+
+  const i3 = ins.run('WS-20260827-1003','WHOLESALE_CHALLAN',3,'Shree Laxmi Jewellers (Pune)','+91 98222 33344',3,'Rohan Mehta',845000,35224,0,0,0,0,880224,115.23,35224,'FINE_GOLD_PLUS_MAKING','PAID','Settled 115.23g Fine Gold + making charges','2026-08-27T11:30:00.000Z');
+  insItem.run(i3.lastInsertRowid,14,'WS-LOT-22K-01-S3','Wholesale Lot: 22K Casting Rings','Rings','Gold','22K (916)',125.8,125.8,0,6720,35224,0,880224,25,'2026-08-27T11:30:00.000Z');
+
+  const i4 = ins.run('INV-20260828-1004','RETAIL_SALE',5,'Ananya Roy','+91 98444 55566',4,'Neha Sharma',112000,7500,85000,0,2500,6060,208060,0,208060,'CARD','PAID','Solitaire engagement purchase','2026-08-28T16:10:00.000Z');
+  insItem.run(i4.lastInsertRowid,9,'JW-DIA-001-S4','Solitaire Princess Cut Engagement Ring','Rings','Gold','18K (750)',5.2,5.0,0.2,5500,7500,85000,120000,1,'2026-08-28T16:10:00.000Z');
+
+  const i5 = ins.run('WS-20260829-1005','WHOLESALE_CHALLAN',4,'Mahalaxmi Ornaments (Surat)','+91 98333 44455',5,'Vikram Sen',570000,21970,0,0,0,0,591970,77.40,21970,'FINE_GOLD_PLUS_MAKING','PAID','Dispatched via armored logistics','2026-08-29T12:00:00.000Z');
+  insItem.run(i5.lastInsertRowid,15,'WS-LOT-22K-02-S5','Wholesale Lot: 22K Lightweight Chains','Chains','Gold','22K (916)',84.5,84.5,0,6745,21970,0,591970,10,'2026-08-29T12:00:00.000Z');
+
+  insOG.run('OG-20260825-1001','Meera Singhania','+91 98765 43210',4.2,0.2,4.0,87.5,3.5,6250,25000,'INVOICE_CREDIT','INV-20260825-1001','Exchanged 22k old broken ring','2026-08-25T14:15:00.000Z');
+  db.exec('COMMIT');
+}
+
+// ─── Migrate legacy JSON data ───────────────────────────────────────────────
+function _migrateFromJSON() {
+  if (!fs.existsSync(JSON_PATH)) return;
+
+  let legacy;
+  try {
+    legacy = JSON.parse(fs.readFileSync(JSON_PATH, 'utf-8'));
+  } catch {
+    console.warn('⚠️  Could not parse legacy JSON — skipping migration');
+    return;
+  }
+
+  const legacyInvCount  = (legacy.sales_invoices || []).length;
+  const currentInvCount = db.prepare('SELECT COUNT(*) as c FROM sales_invoices').get().c;
+  if (legacyInvCount <= currentInvCount) return;
+
+  console.log(`🔄  Migrating ${legacyInvCount} legacy invoices from JSON → SQLite...`);
+
+  // Customers
+  const existingCusts = new Set(db.prepare('SELECT name FROM customers').all().map(r => r.name));
+  const insCust = db.prepare(`INSERT OR IGNORE INTO customers (name,phone,email,type,gst_number,pan_card,address,fine_gold_balance,cash_balance,loyalty_points,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+  for (const c of (legacy.customers || [])) {
+    if (!existingCusts.has(c.name)) insCust.run(c.name,c.phone||'',c.email||'',c.type||'RETAIL_CUSTOMER',c.gst_number||'',c.pan_card||'',c.address||'',c.fine_gold_balance||0,c.cash_balance||0,c.loyalty_points||0,c.created_at||new Date().toISOString());
+  }
+
+  // Products
+  const existingSkus = new Set(db.prepare('SELECT sku FROM products').all().map(r => r.sku));
+  const insProd = db.prepare(`INSERT OR IGNORE INTO products (sku,barcode,title,category,metal_type,purity,gross_weight,net_weight,stone_weight,stone_type,stone_cents,stone_price,wastage_pct,making_charge_type,making_charge_value,huid,counter_tray,item_type,pieces,touch_pct,fine_metal_weight,status,cost_price,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  for (const p of (legacy.products || [])) {
+    if (!existingSkus.has(p.sku)) insProd.run(p.sku,p.barcode||'',p.title,p.category,p.metal_type,p.purity,p.gross_weight,p.net_weight,p.stone_weight||0,p.stone_type||'None',p.stone_cents||0,p.stone_price||0,p.wastage_pct||0,p.making_charge_type||'PER_GRAM',p.making_charge_value||0,p.huid||'',p.counter_tray||'',p.item_type||'RETAIL_SINGLE',p.pieces||1,p.touch_pct||91.6,p.fine_metal_weight||0,p.status||'IN_STOCK',p.cost_price||0,p.notes||'',p.created_at||new Date().toISOString());
+  }
+
+  // Invoices + Items
+  const existingInvNos = new Set(db.prepare('SELECT invoice_no FROM sales_invoices').all().map(r => r.invoice_no));
+  const insInv  = db.prepare(`INSERT OR IGNORE INTO sales_invoices (invoice_no,type,customer_id,customer_name,customer_phone,employee_id,employee_name,subtotal,making_charges,stone_charges,old_gold_deduction,discount,tax_amount,total_amount,fine_gold_settlement_grams,cash_paid,payment_mode,status,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const insItm  = db.prepare(`INSERT INTO sales_items (invoice_id,product_id,sku,title,category,metal_type,purity,gross_weight,net_weight,stone_weight,metal_rate_applied,making_charge,stone_price,total_item_price,pieces,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+
+  db.exec('BEGIN');
+  for (const inv of (legacy.sales_invoices || [])) {
+    if (existingInvNos.has(inv.invoice_no)) continue;
+    const res = insInv.run(inv.invoice_no,inv.type,inv.customer_id||null,inv.customer_name,inv.customer_phone||'',inv.employee_id,inv.employee_name,inv.subtotal||0,inv.making_charges||0,inv.stone_charges||0,inv.old_gold_deduction||0,inv.discount||0,inv.tax_amount||0,inv.total_amount,inv.fine_gold_settlement_grams||0,inv.cash_paid||0,inv.payment_mode||'CASH',inv.status||'PAID',inv.notes||'',inv.created_at||new Date().toISOString());
+    for (const item of (legacy.sales_items||[]).filter(i=>i.invoice_id===inv.id)) {
+      insItm.run(res.lastInsertRowid,item.product_id||null,item.sku||'',item.title,item.category||'',item.metal_type||'',item.purity||'',item.gross_weight||0,item.net_weight||0,item.stone_weight||0,item.metal_rate_applied||0,item.making_charge||0,item.stone_price||0,item.total_item_price||0,item.pieces||1,item.created_at||new Date().toISOString());
+    }
+  }
+  db.exec('COMMIT');
+
+  // Old Gold
+  const existingReceipts = new Set(db.prepare('SELECT receipt_no FROM old_gold_transactions').all().map(r=>r.receipt_no));
+  const insOG = db.prepare(`INSERT OR IGNORE INTO old_gold_transactions (receipt_no,customer_name,customer_phone,gross_weight,stone_dust_deduction,net_weight,purity_touch_pct,fine_gold_weight,valuation_rate_per_gram,total_valuation,settlement_mode,linked_invoice_no,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  for (const og of (legacy.old_gold_transactions||[])) {
+    if (!existingReceipts.has(og.receipt_no)) insOG.run(og.receipt_no,og.customer_name,og.customer_phone||'',og.gross_weight,og.stone_dust_deduction||0,og.net_weight,og.purity_touch_pct,og.fine_gold_weight,og.valuation_rate_per_gram,og.total_valuation,og.settlement_mode||'INVOICE_CREDIT',og.linked_invoice_no||'',og.notes||'',og.created_at||new Date().toISOString());
+  }
+
+  console.log('✅  Legacy JSON migration complete.');
+}
+
+// ─── Daily rotating backup (copy file) ─────────────────────────────────────
+function _createBackup() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const dateStr    = new Date().toISOString().slice(0, 10);
+    const backupPath = path.join(BACKUP_DIR, `jewelflow-${dateStr}.db`);
+    if (!fs.existsSync(backupPath) && fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(DB_PATH, backupPath);
+      console.log(`💾  Daily backup saved: ${backupPath}`);
+    }
+  } catch (err) {
+    console.warn('⚠️  Backup skipped:', err.message);
+  }
 }
 
 export default db;

@@ -307,6 +307,34 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, rates
           <form onSubmit={handleSingleSubmit} className="mt-3.5 space-y-3.5 text-xs">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               
+              {/* Optional Quick Tag / HUID Scan Bar */}
+              <div className="md:col-span-2 p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                <label className="text-[11px] font-semibold text-amber-400 block mb-1 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>⚡ Quick Scan Supplier Tag Barcode or HUID Hallmark</span>
+                  <span className="text-[9px] text-slate-400 font-normal font-mono">(Optional - Zap with Scanner Gun)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Zap tag barcode (e.g. 8901234) or HUID hallmark..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = e.target.value.trim();
+                      if (val) {
+                        if (val.toUpperCase().startsWith('HD') || val.toUpperCase().startsWith('HM') || val.length === 6) {
+                          setFormData(prev => ({ ...prev, huid: val.toUpperCase() }));
+                        } else {
+                          setFormData(prev => ({ ...prev, huid: val.toUpperCase(), notes: `Supplier Tag: ${val}` }));
+                        }
+                        e.target.value = '';
+                      }
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
               {/* Title */}
               <div className="md:col-span-2">
                 <label className="text-slate-300 font-medium block mb-1">Item Title / Description *</label>

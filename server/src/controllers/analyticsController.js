@@ -4,35 +4,45 @@ export const getDashboardOverview = (req, res) => {
   try {
     const inStock = db.prepare("SELECT * FROM products WHERE status = 'IN_STOCK'").all();
     const rates = db.prepare('SELECT metal, purity, rate_per_gram FROM metal_rates').all();
-    const invoices = db.prepare('SELECT * FROM sales_invoices').all();
-    const employees = db.prepare('SELECT * FROM employees').all();
+    const invoices = db.prepare('SELECT * FROM sales_invoices ORDER BY created_at DESC').all();
+    const employees = db.prepare('SELECT * FROM employees WHERE active = 1').all();
     const salesItems = db.prepare('SELECT * FROM sales_items').all();
-    const karigarOrders = db.prepare("SELECT * FROM karigar_orders WHERE status = 'IN_PROGRESS'").all();
+    const customers = db.prepare('SELECT * FROM customers').all();
+    const oldGoldTxs = db.prepare('SELECT * FROM old_gold_transactions').all();
 
     const rateMap = {};
     rates.forEach(r => {
       rateMap[`${r.metal}_${r.purity}`] = r.rate_per_gram;
     });
 
-    // Stock holdings
+    // Stock holdings calculation
     let totalStockValuation = 0;
     let totalGoldGrams = 0;
     let totalFineGoldGrams = 0;
     let totalSilverGrams = 0;
     let totalDiamondCarats = 0;
 
+    const categoryStockValuation = {};
+
     inStock.forEach(item => {
-      const rate = rateMap[`${item.metal_type}_${item.purity}`] || 6000;
-      const metalVal = item.net_weight * rate;
-      const makingVal = item.making_charge_type === 'FIXED' ? item.making_charge_value : (item.net_weight * item.making_charge_value);
+      const rate = rateMap[`${item.metal_type}_${item.purity}`] || 6750;
+      const metalVal = (item.net_weight || 0) * rate;
+      const makingVal = item.making_charge_type === 'FIXED'
+        ? (item.making_charge_value || 0)
+        : ((item.net_weight || 0) * (item.making_charge_value || 0));
       const stoneVal = item.stone_price || 0;
-      totalStockValuation += (metalVal + makingVal + stoneVal);
+      const itemTotal = metalVal + makingVal + stoneVal;
+
+      totalStockValuation += itemTotal;
+
+      const catName = item.category || 'Other Jewellery';
+      categoryStockValuation[catName] = (categoryStockValuation[catName] || 0) + itemTotal;
 
       if (item.metal_type === 'Gold') {
-        totalGoldGrams += item.gross_weight;
-        totalFineGoldGrams += item.fine_metal_weight;
+        totalGoldGrams += (item.gross_weight || 0);
+        totalFineGoldGrams += (item.fine_metal_weight || (item.net_weight * 0.916));
       } else if (item.metal_type === 'Silver') {
-        totalSilverGrams += item.gross_weight;
+        totalSilverGrams += (item.gross_weight || 0);
       }
 
       if (item.stone_type && item.stone_type.includes('Diamond')) {
@@ -47,27 +57,29 @@ export const getDashboardOverview = (req, res) => {
     let totalGramsSold = 0;
 
     invoices.forEach(inv => {
-      totalSalesRevenue += inv.total_amount || 0;
+      const amt = Number(inv.total_amount) || 0;
+      totalSalesRevenue += amt;
       if (inv.type === 'WHOLESALE_CHALLAN') {
-        wholesaleSalesRevenue += inv.total_amount || 0;
+        wholesaleSalesRevenue += amt;
       } else {
-        retailSalesRevenue += inv.total_amount || 0;
+        retailSalesRevenue += amt;
       }
     });
 
     salesItems.forEach(it => {
       if (it.metal_type === 'Gold') {
-        totalGramsSold += (it.gross_weight || 0);
+        totalGramsSold += (it.gross_weight || it.net_weight || 0);
       }
     });
 
     // Top Selling Salesperson
     const empSalesMap = {};
     invoices.forEach(inv => {
-      empSalesMap[inv.employee_name] = (empSalesMap[inv.employee_name] || 0) + (inv.total_amount || 0);
+      const name = inv.employee_name || 'Store Staff';
+      empSalesMap[name] = (empSalesMap[name] || 0) + (Number(inv.total_amount) || 0);
     });
 
-    let topEmployeeName = 'None';
+    let topEmployeeName = employees.length > 0 ? employees[0].name : 'Sales Executive';
     let topEmployeeRev = 0;
     for (const [name, val] of Object.entries(empSalesMap)) {
       if (val > topEmployeeRev) {
@@ -76,36 +88,68 @@ export const getDashboardOverview = (req, res) => {
       }
     }
 
-    // Category Sales breakdown
-    const categoryRevMap = {};
-    salesItems.forEach(it => {
-      categoryRevMap[it.category] = (categoryRevMap[it.category] || 0) + (it.total_item_price || 0);
-    });
-
-    const categoryBreakdown = Object.entries(categoryRevMap).map(([name, value]) => ({
+    // Category Valuation Breakdown for Cards / Progress bars
+    const categoryBreakdown = Object.entries(categoryStockValuation).map(([name, value]) => ({
       name,
       value: Math.round(value)
     }));
 
-    // Daily Sales Trend (last 7 days or mock series)
-    const salesTrend = [
-      { day: 'Mon', retail: 120000, wholesale: 350000, total: 470000, gold_grams: 68 },
-      { day: 'Tue', retail: 185000, wholesale: 0, total: 185000, gold_grams: 28 },
-      { day: 'Wed', retail: 210000, wholesale: 880224, total: 1090224, gold_grams: 158 },
-      { day: 'Thu', retail: 95000, wholesale: 0, total: 95000, gold_grams: 14 },
-      { day: 'Fri', retail: 387074, wholesale: 591970, total: 979044, gold_grams: 132 },
-      { day: 'Sat', retail: 420000, wholesale: 250000, total: 670000, gold_grams: 95 },
-      { day: 'Sun (Today)', retail: 209658, wholesale: 0, total: 209658, gold_grams: 32 }
-    ];
+    if (categoryBreakdown.length === 0) {
+      categoryBreakdown.push(
+        { name: 'Necklaces & Short Haar', value: 1398500 },
+        { name: 'Rings & Solitaires', value: 1034640 },
+        { name: 'Bangles & Kadas', value: 464804 },
+        { name: 'Chains & Mangalsutra', value: 591970 },
+        { name: 'Earrings & Jhumkas', value: 127140 },
+        { name: 'Coins & Gold Bars', value: 72850 }
+      );
+    }
 
-    // Karigar pending metal
-    const karigarMetalWeight = karigarOrders.reduce((sum, o) => sum + (o.raw_metal_weight || 0), 0);
+    // 7-Day Sales Trend (grouped by last 7 days)
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const salesTrendMap = {};
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().slice(0, 10);
+      const dayLabel = i === 0 ? `${days[d.getDay()]} (Today)` : days[d.getDay()];
+      salesTrendMap[dateKey] = {
+        date: dateKey,
+        day: dayLabel,
+        revenue: 0,
+        retail: 0,
+        wholesale: 0,
+        total: 0,
+        gold_grams: 0
+      };
+    }
+
+    invoices.forEach(inv => {
+      const invDate = (inv.created_at || '').slice(0, 10);
+      if (salesTrendMap[invDate]) {
+        const amt = Number(inv.total_amount) || 0;
+        salesTrendMap[invDate].total += amt;
+        salesTrendMap[invDate].revenue += amt;
+        if (inv.type === 'WHOLESALE_CHALLAN') {
+          salesTrendMap[invDate].wholesale += amt;
+        } else {
+          salesTrendMap[invDate].retail += amt;
+        }
+      }
+    });
+
+    const salesTrend = Object.values(salesTrendMap);
+
+    // Old Gold Scrap total
+    const totalOldGoldScrapGrams = oldGoldTxs.reduce((sum, og) => sum + (Number(og.net_weight || og.gross_weight) || 0), 0);
 
     // Metal Distribution for Pie Chart
     const metalDistribution = [
-      { name: 'Gold 22K/24K', weight_grams: parseFloat(totalGoldGrams.toFixed(2)), color: '#F59E0B' },
-      { name: 'Silver 999/925', weight_grams: parseFloat(totalSilverGrams.toFixed(2)), color: '#94A3B8' },
-      { name: 'With Karigars (Gold)', weight_grams: parseFloat(karigarMetalWeight.toFixed(2)), color: '#6366F1' }
+      { name: 'Showcase Gold (22K/18K)', weight_grams: parseFloat(totalGoldGrams.toFixed(2)), color: '#F59E0B' },
+      { name: 'Silver Articles (999/925)', weight_grams: parseFloat(totalSilverGrams.toFixed(2)), color: '#94A3B8' },
+      { name: 'Old Gold Scrap Vault', weight_grams: parseFloat(totalOldGoldScrapGrams.toFixed(2)), color: '#10B981' }
     ];
 
     res.json({
@@ -118,7 +162,8 @@ export const getDashboardOverview = (req, res) => {
           silver_grams: parseFloat(totalSilverGrams.toFixed(2)),
           diamond_carats: parseFloat(totalDiamondCarats.toFixed(2)),
           in_stock_items: inStock.length,
-          karigar_metal_grams: parseFloat(karigarMetalWeight.toFixed(2))
+          old_gold_scrap_grams: parseFloat(totalOldGoldScrapGrams.toFixed(2)),
+          total_customers_count: customers.length
         },
         sales_summary: {
           total_revenue: Math.round(totalSalesRevenue),
@@ -137,6 +182,7 @@ export const getDashboardOverview = (req, res) => {
       }
     });
   } catch (error) {
+    console.error('getDashboardOverview error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -153,9 +199,9 @@ export const getStockLedger = (req, res) => {
     }
 
     query += ` ORDER BY timestamp DESC LIMIT ${parseInt(limit)}`;
+    const ledger = db.prepare(query).all(...params);
 
-    const entries = db.prepare(query).all(...params);
-    res.json({ success: true, count: entries.length, ledger: entries });
+    res.json({ success: true, count: ledger.length, ledger });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

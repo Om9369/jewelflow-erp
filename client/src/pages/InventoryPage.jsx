@@ -283,7 +283,7 @@ export default function InventoryPage({ rates, onOpenAddModal, onPrintTag }) {
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onPrintTag(item)}
-                        title="Print Jewellery Barcode Tag"
+                        title="Print Jewellery QR Code Tag"
                         className="p-1.5 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-colors"
                       >
                         <Printer className="w-3.5 h-3.5" />

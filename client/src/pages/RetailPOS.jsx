@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShoppingCart,
   Search,
@@ -9,27 +9,38 @@ import {
   Coins,
   CreditCard,
   User,
+  Users,
   ShieldCheck,
   Percent,
   CheckCircle2,
   AlertCircle,
-  Gem
+  Gem,
+  Phone,
+  Award,
+  X,
+  Check
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function RetailPOS({ rates, onInvoiceCreated }) {
   const [stockItems, setStockItems] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [customersList, setCustomersList] = useState([]);
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Customer & Attribution Info
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState(null);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [customerName, setCustomerName] = useState('Walk-in Customer');
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [discount, setDiscount] = useState('0');
   const [notes, setNotes] = useState('');
+  const customerSearchRef = useRef(null);
 
   // Old Gold Exchange Section
   const [enableOldGold, setEnableOldGold] = useState(false);
@@ -45,15 +56,25 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
 
   useEffect(() => {
     loadData();
+
+    const handleClickOutside = (e) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadData = async () => {
     try {
-      const [invRes, empRes] = await Promise.all([
+      const [invRes, empRes, custRes] = await Promise.all([
         api.getInventory({ status: 'IN_STOCK', item_type: 'RETAIL_SINGLE' }),
-        api.getEmployees()
+        api.getEmployees(),
+        api.getCustomers()
       ]);
       if (invRes && invRes.success) setStockItems(invRes.products || invRes.items || []);
+      if (custRes && custRes.success) setCustomersList(custRes.customers || []);
       if (empRes && empRes.success && empRes.employees) {
         setEmployees(empRes.employees);
         if (empRes.employees.length > 0) {
@@ -172,6 +193,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
 
     try {
       const payload = {
+        customer_id: selectedCustomerId ? parseInt(selectedCustomerId) : null,
         customer_name: customerName,
         customer_phone: customerPhone,
         employee_id: parseInt(selectedEmployeeId),
@@ -196,6 +218,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
         // Clear cart and refresh stock
         setCart([]);
         setEnableOldGold(false);
+        setSelectedCustomerId('');
         setCustomerName('Walk-in Customer');
         setCustomerPhone('');
         setDiscount('0');
@@ -237,18 +260,23 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
           </p>
         </div>
 
-        {/* Barcode Quick Scanner Bar */}
+        {/* Barcode / Tag Quick Scanner Bar */}
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Scan Barcode / SKU / HUID & hit Enter..."
+              autoFocus
+              placeholder="⚡ Scan Jewellery Tag / SKU / HUID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleBarcodeScan}
-              className="w-80 bg-slate-950 border border-amber-500/30 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+              className="w-72 sm:w-84 bg-slate-950 border border-amber-500/50 rounded-xl pl-9 pr-24 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 shadow-inner"
             />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold font-mono uppercase flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Scanner Ready
+            </span>
           </div>
         </div>
       </div>
@@ -395,27 +423,227 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
               </select>
             </div>
 
-            {/* Customer Inputs */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Customer Name *</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
-                />
+            {/* Customer Search by Mobile No / Name & Attribution */}
+            <div className="space-y-2.5">
+              
+              {/* Search Box with Floating Auto-Complete */}
+              <div className="relative" ref={customerSearchRef}>
+                <label className="text-[11px] font-semibold text-amber-400 block mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-amber-400" />
+                    Search Customer by Mobile No. or Name
+                  </span>
+                  {selectedCustomerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomerId('');
+                        setSelectedCustomerObj(null);
+                        setCustomerName('Walk-in Customer');
+                        setCustomerPhone('');
+                        setCustomerSearchQuery('');
+                      }}
+                      className="text-[10px] text-rose-400 hover:text-rose-300 font-normal flex items-center gap-0.5"
+                    >
+                      <X className="w-3 h-3" /> Clear / Walk-in
+                    </button>
+                  )}
+                </label>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={customerSearchQuery}
+                    onChange={(e) => {
+                      setCustomerSearchQuery(e.target.value);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    placeholder="Type mobile (e.g. 98111...) or customer name..."
+                    className="w-full bg-slate-950 border border-amber-500/40 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                  />
+                  <Phone className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 -translate-y-1/2" />
+                  {customerSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSearchQuery('');
+                        setShowCustomerDropdown(false);
+                      }}
+                      className="text-slate-400 hover:text-slate-200 absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Floating Matches Dropdown */}
+                {showCustomerDropdown && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-amber-500/40 rounded-xl shadow-2xl z-40 max-h-56 overflow-y-auto divide-y divide-slate-800 animate-in fade-in zoom-in-95 duration-150">
+                    {customersList
+                      .filter(c => {
+                        if (!customerSearchQuery.trim()) return true;
+                        const q = customerSearchQuery.toLowerCase().trim();
+                        const phone = (c.phone || '').replace(/[^0-9]/g, '');
+                        const name = (c.name || '').toLowerCase();
+                        const pan = (c.pan_card || '').toLowerCase();
+                        return phone.includes(q) || name.includes(q) || pan.includes(q);
+                      })
+                      .slice(0, 8)
+                      .map(c => {
+                        const isDiamond = c.loyalty_tier === 'DIAMOND_VIP';
+                        const isPlat = c.loyalty_tier === 'PLATINUM';
+                        const isGold = c.loyalty_tier === 'GOLD';
+
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCustomerId(c.id);
+                              setSelectedCustomerObj(c);
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone || '');
+                              setCustomerSearchQuery('');
+                              setShowCustomerDropdown(false);
+                            }}
+                            className="w-full p-2.5 text-left hover:bg-slate-800/80 transition-colors flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                isDiamond
+                                  ? 'bg-gradient-to-tr from-purple-500 to-pink-500 text-white'
+                                  : isPlat
+                                  ? 'bg-gradient-to-tr from-blue-500 to-indigo-500 text-white'
+                                  : 'bg-amber-500/20 text-amber-300'
+                              }`}>
+                                {c.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-bold text-slate-100 block truncate text-xs">{c.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono block">
+                                  📱 {c.phone || 'No phone'} {c.city ? `· ${c.city}` : ''}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="text-right flex-shrink-0">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase inline-flex items-center gap-0.5 ${
+                                isDiamond
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : isPlat
+                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                  : isGold
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-slate-800 text-slate-300'
+                              }`}>
+                                {isDiamond ? <Gem className="w-2.5 h-2.5" /> : <Award className="w-2.5 h-2.5" />}
+                                {c.loyalty_tier ? c.loyalty_tier.replace('_', ' ') : 'MEMBER'}
+                              </span>
+                              {c.total_purchases_inr > 0 && (
+                                <span className="text-[9px] text-emerald-400 font-mono block mt-0.5">
+                                  ₹{c.total_purchases_inr.toLocaleString('en-IN')}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                    {customersList.filter(c => {
+                      if (!customerSearchQuery.trim()) return true;
+                      const q = customerSearchQuery.toLowerCase().trim();
+                      const phone = (c.phone || '').replace(/[^0-9]/g, '');
+                      const name = (c.name || '').toLowerCase();
+                      return phone.includes(q) || name.includes(q);
+                    }).length === 0 && (
+                      <div className="p-3 text-center text-slate-400 text-xs">
+                        No registered customer found for "{customerSearchQuery}". Fill name & phone below to register new!
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Customer Phone</label>
-                <input
-                  type="text"
-                  placeholder="+91..."
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
-                />
+
+              {/* Selected Customer Active VIP Card Banner */}
+              {selectedCustomerObj && (
+                <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-slate-950 to-slate-950 border border-amber-500/30 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+                      <Gem className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-100">{selectedCustomerObj.name}</span>
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold font-mono">
+                          {selectedCustomerObj.loyalty_tier ? selectedCustomerObj.loyalty_tier.replace('_', ' ') : 'VIP'}
+                        </span>
+                        {selectedCustomerObj.kyc_verified && (
+                          <span className="text-emerald-400 text-[9px] font-bold inline-flex items-center gap-0.5">
+                            <ShieldCheck className="w-2.5 h-2.5" /> KYC
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        📱 {selectedCustomerObj.phone} · Spent: ₹{(selectedCustomerObj.total_purchases_inr || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCustomerId('');
+                      setSelectedCustomerObj(null);
+                      setCustomerName('Walk-in Customer');
+                      setCustomerPhone('');
+                    }}
+                    className="text-slate-400 hover:text-slate-200 p-1"
+                    title="Deselect customer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Editable Customer Name & Phone for Invoice */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value);
+                      if (selectedCustomerObj && e.target.value !== selectedCustomerObj.name) {
+                        setSelectedCustomerId('');
+                        setSelectedCustomerObj(null);
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Customer Phone</label>
+                  <input
+                    type="text"
+                    placeholder="+91..."
+                    value={customerPhone}
+                    onChange={(e) => {
+                      setCustomerPhone(e.target.value);
+                      const clean = e.target.value.replace(/[^0-9]/g, '');
+                      const match = customersList.find(c => c.phone && c.phone.replace(/[^0-9]/g, '') === clean);
+                      if (match) {
+                        setSelectedCustomerId(match.id);
+                        setSelectedCustomerObj(match);
+                        setCustomerName(match.name);
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
               </div>
+
             </div>
 
             {/* Payment Mode */}

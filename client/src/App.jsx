@@ -14,13 +14,14 @@ import PrintTagModal from './components/modals/PrintTagModal';
 import PrintInvoiceModal from './components/modals/PrintInvoiceModal';
 import AddProductModal from './components/modals/AddProductModal';
 import ShareModal from './components/modals/ShareModal';
+import VerifyPassportModal from './components/modals/VerifyPassportModal';
+import PinAuthModal from './components/modals/PinAuthModal';
 
 import Dashboard from './pages/Dashboard';
 import RetailPOS from './pages/RetailPOS';
 import InventoryPage from './pages/InventoryPage';
 import PurchasesPage from './pages/PurchasesPage';
 import EmployeeAnalytics from './pages/EmployeeAnalytics';
-import KarigarLedger from './pages/KarigarLedger';
 import StockAudit from './pages/StockAudit';
 import OldGoldPage from './pages/OldGoldPage';
 import ReportsPage from './pages/ReportsPage';
@@ -39,17 +40,39 @@ export default function App() {
 
   // Modals state
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedTagProduct, setSelectedTagProduct] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [verifiedProduct, setVerifiedProduct] = useState(null);
 
   useEffect(() => {
     loadRates();
+    checkUrlVerification();
     const handleStoreUpdate = () => setStoreConfig(getStoreConfig());
     window.addEventListener('store_config_updated', handleStoreUpdate);
     return () => window.removeEventListener('store_config_updated', handleStoreUpdate);
   }, []);
+
+  // Handle instant Digital Passport lookup when scanning tag QR code with phone
+  const checkUrlVerification = async () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const verifySku = params.get('verify');
+      if (verifySku) {
+        const invRes = await api.getInventory({ search: verifySku });
+        if (invRes && invRes.success && invRes.products && invRes.products.length > 0) {
+          const matched = invRes.products.find(
+            p => p.sku.toLowerCase() === verifySku.toLowerCase() || p.barcode === verifySku || String(p.id) === verifySku
+          ) || invRes.products[0];
+          setVerifiedProduct(matched);
+        }
+      }
+    } catch (e) {
+      console.warn('Verification check note:', e);
+    }
+  };
 
   const loadRates = async () => {
     try {
@@ -73,7 +96,7 @@ export default function App() {
       {/* Top Navigation Bar with Live Bullion Ticker & Mobile Menu Button */}
       <Navbar
         rates={rates}
-        onOpenRateModal={() => setIsRateModalOpen(true)}
+        onOpenRateModal={() => setIsPinModalOpen(true)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -98,7 +121,7 @@ export default function App() {
             <Dashboard
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenAddModal={() => setIsAddProductOpen(true)}
-              onOpenRateModal={() => setIsRateModalOpen(true)}
+              onOpenRateModal={() => setIsPinModalOpen(true)}
             />
           )}
 
@@ -141,9 +164,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'karigar' && (
-            <KarigarLedger />
-          )}
+
 
           {activeTab === 'stock-audit' && (
             <StockAudit />
@@ -243,6 +264,21 @@ export default function App() {
         isOpen={!!selectedInvoice}
         onClose={() => setSelectedInvoice(null)}
         invoice={selectedInvoice}
+      />
+
+      <VerifyPassportModal
+        isOpen={!!verifiedProduct}
+        onClose={() => setVerifiedProduct(null)}
+        product={verifiedProduct}
+        rates={rates}
+      />
+
+      <PinAuthModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        onSuccess={() => setIsRateModalOpen(true)}
+        title="Owner Rate Update PIN"
+        description="Enter your 4-digit Master PIN to update today's live showroom gold & silver rates."
       />
 
     </div>

@@ -14,7 +14,8 @@ import {
   Plus,
   PiggyBank,
   Store,
-  Receipt
+  Receipt,
+  Truck
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -33,11 +34,13 @@ const defaultDashboardData = {
     silver_grams: 850.0,
     diamond_carats: 1.85,
     in_stock_items: 16,
-    karigar_metal_grams: 74.5
+    old_gold_scrap_grams: 11.5,
+    total_customers_count: 6
   },
   sales_summary: {
     total_revenue: 1845000,
     retail_revenue: 1845000,
+    wholesale_revenue: 0,
     total_gold_grams_sold: 268.5,
     invoices_count: 24,
     top_employee: { name: 'Aarav Verma', revenue: 462703 }
@@ -51,18 +54,18 @@ const defaultDashboardData = {
     { name: 'Silver Coins & Utensils', value: 231543 }
   ],
   sales_trend: [
-    { day: 'Mon', revenue: 220000, gold_grams: 32 },
-    { day: 'Tue', revenue: 285000, gold_grams: 41 },
-    { day: 'Wed', revenue: 310000, gold_grams: 45 },
-    { day: 'Thu', revenue: 295000, gold_grams: 43 },
-    { day: 'Fri', revenue: 387074, gold_grams: 56 },
-    { day: 'Sat', revenue: 420000, gold_grams: 62 },
-    { day: 'Sun (Today)', revenue: 462703, gold_grams: 68.5 }
+    { day: 'Mon', revenue: 220000, retail: 220000, wholesale: 0, total: 220000, gold_grams: 32 },
+    { day: 'Tue', revenue: 285000, retail: 285000, wholesale: 0, total: 285000, gold_grams: 41 },
+    { day: 'Wed', revenue: 310000, retail: 310000, wholesale: 0, total: 310000, gold_grams: 45 },
+    { day: 'Thu', revenue: 295000, retail: 295000, wholesale: 0, total: 295000, gold_grams: 43 },
+    { day: 'Fri', revenue: 387074, retail: 387074, wholesale: 0, total: 387074, gold_grams: 56 },
+    { day: 'Sat', revenue: 420000, retail: 420000, wholesale: 0, total: 420000, gold_grams: 62 },
+    { day: 'Sun (Today)', revenue: 462703, retail: 462703, wholesale: 0, total: 462703, gold_grams: 68.5 }
   ],
   metal_distribution: [
     { name: 'Showcase Gold (22K/18K)', weight_grams: 148.5, color: '#F59E0B' },
     { name: 'Silver Articles (999/925)', weight_grams: 850.0, color: '#94A3B8' },
-    { name: 'With Karigars (Job Work)', weight_grams: 74.5, color: '#6366F1' }
+    { name: 'Old Gold Scrap Vault', weight_grams: 11.5, color: '#10B981' }
   ]
 };
 
@@ -99,7 +102,10 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
   const stock_summary = data?.stock_summary || defaultDashboardData.stock_summary;
   const sales_summary = data?.sales_summary || defaultDashboardData.sales_summary;
-  const sales_trend = data?.sales_trend || defaultDashboardData.sales_trend;
+  const sales_trend = (data?.sales_trend || defaultDashboardData.sales_trend).map(item => ({
+    ...item,
+    revenue: Number(item.revenue || item.total || item.retail || 0)
+  }));
   const category_breakdown = data?.category_breakdown || defaultDashboardData.category_breakdown;
   const metal_distribution = data?.metal_distribution || defaultDashboardData.metal_distribution;
   const topSalesExec = employees.length > 0 ? employees[0] : null;
@@ -133,7 +139,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex items-center gap-2 z-10 w-full lg:w-auto pt-2 lg:pt-0">
           <button
             onClick={() => onNavigate('retail-pos')}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95 cursor-pointer"
           >
             <ShoppingCart className="w-4 h-4 flex-shrink-0" />
             <span>1. Sales Billing</span>
@@ -141,7 +147,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
           <button
             onClick={() => onNavigate('inventory')}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all active:scale-95 cursor-pointer"
           >
             <Layers className="w-4 h-4 flex-shrink-0 text-amber-400" />
             <span>2. Showroom Stock</span>
@@ -149,7 +155,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
           <button
             onClick={() => onNavigate('purchases')}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer"
           >
             <Truck className="w-4 h-4 flex-shrink-0" />
             <span>3. Purchases Inward</span>
@@ -202,27 +208,26 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
           </div>
         </div>
 
-        {/* Karigar Custom Orders */}
-        <div className="bg-slate-900/70 border border-slate-800 hover:border-indigo-500/30 rounded-2xl p-4 sm:p-5 transition-all">
+        {/* Registered Clients & VIPs */}
+        <div className="bg-slate-900/70 border border-slate-800 hover:border-purple-500/30 rounded-2xl p-4 sm:p-5 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Karigar Orders</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <ShieldCheck className="w-4 h-4" />
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Client Directory & KYC</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-bold font-mono text-indigo-400">
-              {stock_summary.karigar_metal_grams}g
+            <span className="text-xl sm:text-2xl font-bold font-mono text-purple-300">
+              {stock_summary.total_customers_count || 6} Clients
             </span>
-            <span className="text-xs text-slate-400">Custom Work Issued</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>Active Bridal Orders:</span>
+            <span>VIP KYC Registry:</span>
             <button
-              onClick={() => onNavigate('karigar')}
-              className="font-semibold text-indigo-400 hover:underline flex items-center gap-1"
+              onClick={() => onNavigate('customers')}
+              className="font-semibold text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>View Ledger</span>
+              <span>View Directory</span>
               <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
@@ -283,7 +288,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
-                  formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Sales Revenue']}
+                  formatter={(value) => [`₹${Number(value || 0).toLocaleString('en-IN')}`, 'Sales Revenue']}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRetail)" name="Retail Sales" />
               </AreaChart>
@@ -349,7 +354,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
             </div>
             <button
               onClick={() => onNavigate('inventory')}
-              className="text-[11px] sm:text-xs text-amber-400 hover:underline flex items-center gap-1"
+              className="text-[11px] sm:text-xs text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>Catalog & Tags</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -398,7 +403,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
               <div className="flex items-center justify-between py-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Retail Sales Achieved:</span>
                 <span className="font-mono font-bold text-amber-400">
-                  ₹{(topSalesExec?.performance?.total_revenue || 462703).toLocaleString('en-IN')}
+                  ₹{(topSalesExec?.performance?.total_revenue || sales_summary?.top_employee?.revenue || 462703).toLocaleString('en-IN')}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5 border-b border-slate-800">
@@ -416,7 +421,7 @@ export default function Dashboard({ onNavigate, onOpenAddModal, onOpenRateModal 
 
           <button
             onClick={() => onNavigate('employee-hub')}
-            className="w-full mt-3 sm:mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-3 sm:mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Users className="w-3.5 h-3.5 text-amber-400" />
             <span>Staff Analytics & Targets</span>
