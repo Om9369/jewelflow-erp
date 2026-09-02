@@ -195,13 +195,21 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
     setError('');
 
     try {
+      const selectedEmp = employees.find(e => (e._id || e.id) == selectedEmployeeId);
       const payload = {
-        customer_id: selectedCustomerId ? parseInt(selectedCustomerId) : null,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        employee_id: parseInt(selectedEmployeeId),
+        customer_id: selectedCustomerId || null,
+        customer_name: customerName || 'Walk-in Customer',
+        customer_phone: customerPhone || '',
+        employee_id: selectedEmployeeId,
+        employee_name: selectedEmp ? selectedEmp.name : 'Sales Staff',
         items: cart,
+        subtotal: subtotal,
+        making_charges: totalMaking,
+        stone_charges: cart.reduce((s, it) => s + (it.stone_price || 0), 0),
+        old_gold_deduction: oldGoldCreditVal,
         discount: discountVal,
+        tax_amount: gstAmount,
+        total_amount: grandTotal,
         payment_mode: paymentMode,
         tax_rate: effectiveGstRate,
         notes: notes,

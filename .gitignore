@@ -26,3 +26,4 @@ Thumbs.db
 *.env
 server/.env
 dist/dist/
+scratch/
