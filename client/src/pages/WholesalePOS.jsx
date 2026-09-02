@@ -118,7 +118,16 @@ export default function WholesalePOS({ rates, onInvoiceCreated }) {
         notes: notes || `Wholesale Dispatch: ${selectedLots.length} Lots to ${currentDealer?.name}`
       };
 
-      const res = await api.createWholesaleChallan(payload);
+      const createFn = (api && (api.createWholesaleChallan || api.createInvoice)) || (async (data) => {
+        const fetchRes = await fetch('/api/sales/wholesale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return await fetchRes.json();
+      });
+
+      const res = await createFn(payload);
       if (res.success) {
         setSelectedLots([]);
         setFineGoldSettled('');

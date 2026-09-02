@@ -216,7 +216,16 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
         } : null
       };
 
-      const res = await api.createRetailInvoice(payload);
+      const createFn = (api && (api.createRetailInvoice || api.createInvoice)) || (async (data) => {
+        const fetchRes = await fetch('/api/sales/retail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return await fetchRes.json();
+      });
+
+      const res = await createFn(payload);
       if (res.success) {
         // Clear cart and refresh stock
         setCart([]);
