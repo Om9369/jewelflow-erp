@@ -1,4 +1,5 @@
 import { getLocalStore, saveLocalStore } from './mockData';
+import { tursoApi } from './tursoDirect';
 
 const API_BASE = '/api';
 
@@ -19,6 +20,10 @@ async function fetchOrFallback(url, options, fallbackFn) {
 export const api = {
   // Metal Rates
   getRates: async () => {
+    try {
+      const res = await tursoApi.getRates();
+      if (res && res.success && res.rates && res.rates.length > 0) return res;
+    } catch (e) {}
     return fetchOrFallback(`${API_BASE}/rates`, {}, () => {
       const store = getLocalStore();
       return { success: true, rates: store.metal_rates || [] };
@@ -26,6 +31,9 @@ export const api = {
   },
 
   updateRate: async (id, rate_per_gram) => {
+    try {
+      await tursoApi.updateRate(id, rate_per_gram);
+    } catch (e) {}
     return fetchOrFallback(`${API_BASE}/rates/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -57,6 +65,11 @@ export const api = {
 
   // Inventory
   getInventory: async (params = {}) => {
+    try {
+      const res = await tursoApi.getInventory(params);
+      if (res && res.success && res.products) return res;
+    } catch (e) {}
+
     const query = new URLSearchParams(params).toString();
     return fetchOrFallback(`${API_BASE}/inventory?${query}`, {}, () => {
       const store = getLocalStore();
@@ -86,90 +99,69 @@ export const api = {
     });
   },
 
-  getInventoryStats: async () => {
-    return fetchOrFallback(`${API_BASE}/inventory/stats`, {}, () => {
-      const store = getLocalStore();
-      const prods = (store.products || []).filter(p => p.status === 'IN_STOCK');
-      const rates = store.metal_rates || [];
-      const rateMap = {};
-      rates.forEach(r => { rateMap[`${r.metal}_${r.purity}`] = r.rate_per_gram; });
-
-      let totalVal = 0;
-      let totalGold = 0;
-      let totalFine = 0;
-      let totalSilver = 0;
-
-      prods.forEach(p => {
-        const r = rateMap[`${p.metal_type}_${p.purity}`] || 6000;
-        const metal = p.net_weight * r;
-        const making = p.making_charge_type === 'FIXED' ? p.making_charge_value : (p.net_weight * p.making_charge_value);
-        totalVal += (metal + making + (p.stone_price || 0));
-        if (p.metal_type === 'Gold') {
-          totalGold += p.gross_weight;
-          totalFine += p.fine_metal_weight;
-        } else if (p.metal_type === 'Silver') {
-          totalSilver += p.gross_weight;
-        }
-      });
-
-      return {
-        success: true,
-        stats: {
-          total_items: prods.length,
-          total_gross_weight: parseFloat(prods.reduce((s, p) => s + (p.gross_weight || 0), 0).toFixed(3)),
-          total_net_weight: parseFloat(prods.reduce((s, p) => s + (p.net_weight || 0), 0).toFixed(3)),
-          total_fine_gold_weight: parseFloat(totalFine.toFixed(3)),
-          total_estimated_value: Math.round(totalVal) || 3575543
-        }
-      };
-    });
-  },
-
   getProductById: async (id) => {
     return fetchOrFallback(`${API_BASE}/inventory/${id}`, {}, () => {
       const store = getLocalStore();
-      const p = (store.products || []).find(item => item.id === parseInt(id) || item.sku === id || item.barcode === id);
-      return { success: !!p, product: p };
+      const product = (store.products || []).find(p => p.id === parseInt(id) || p.sku === id);
+      return { success: !!product, product };
     });
   },
 
   createProduct: async (productData) => {
+    try {
+      const res = await tursoApi.createProduct(productData);
+      if (res && res.success) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/inventory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     }, () => {
       const store = getLocalStore();
-      const newProd = {
+      const newProduct = {
         id: Date.now(),
-        sku: `JW-${productData.metal_type?.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-        barcode: `890${Math.floor(1000000 + Math.random() * 9000000)}`,
-        huid: `HD${Math.floor(100000 + Math.random() * 900000)}`,
+        sku: `JW-${productData.metal_type ? productData.metal_type.substring(0, 3).toUpperCase() : 'GLD'}-${Math.floor(1000 + Math.random() * 9000)}`,
+        barcode: Math.floor(10000000 + Math.random() * 90000000).toString(),
         status: 'IN_STOCK',
         created_at: new Date().toISOString(),
         ...productData
       };
       if (!store.products) store.products = [];
-      store.products.unshift(newProd);
-      if (!store.stock_ledger) store.stock_ledger = [];
-      store.stock_ledger.unshift({
-        id: Date.now(),
-        movement_type: 'IN_PURCHASE',
-        sku: newProd.sku,
-        title: newProd.title,
-        gross_weight: newProd.gross_weight,
-        net_weight: newProd.net_weight,
-        reference_id: 'MANUAL_INWARD',
-        notes: 'Inwarded via Inventory Portal',
-        timestamp: new Date().toISOString()
-      });
+      store.products.unshift(newProduct);
       saveLocalStore(store);
-      return { success: true, product: newProd };
+      return { success: true, product: newProduct };
+    });
+  },
+
+  updateProduct: async (id, productData) => {
+    try {
+      await tursoApi.updateProduct(id, productData);
+    } catch (e) {}
+
+    return fetchOrFallback(`${API_BASE}/inventory/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    }, () => {
+      const store = getLocalStore();
+      const index = (store.products || []).findIndex(p => p.id === parseInt(id));
+      if (index !== -1) {
+        store.products[index] = { ...store.products[index], ...productData };
+        saveLocalStore(store);
+      }
+      return { success: true };
     });
   },
 
   deleteProduct: async (id) => {
-    return fetchOrFallback(`${API_BASE}/inventory/${id}`, { method: 'DELETE' }, () => {
+    try {
+      await tursoApi.deleteProduct(id);
+    } catch (e) {}
+
+    return fetchOrFallback(`${API_BASE}/inventory/${id}`, {
+      method: 'DELETE'
+    }, () => {
       const store = getLocalStore();
       store.products = (store.products || []).filter(p => p.id !== parseInt(id));
       saveLocalStore(store);
@@ -177,112 +169,70 @@ export const api = {
     });
   },
 
-  // Sales & POS
-  createRetailInvoice: async (invoiceData) => {
-    return fetchOrFallback(`${API_BASE}/sales/retail`, {
+  // Sales
+  createInvoice: async (invoiceData) => {
+    try {
+      const res = await tursoApi.createInvoice(invoiceData);
+      if (res && res.success) return res;
+    } catch (e) {}
+
+    return fetchOrFallback(`${API_BASE}/sales/invoices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(invoiceData)
     }, () => {
       const store = getLocalStore();
+      const now = new Date().toISOString();
+      const invNo = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
       const emp = (store.employees || []).find(e => e.id === parseInt(invoiceData.employee_id));
-      const invoice = {
+
+      const newInvoice = {
         id: Date.now(),
-        invoice_no: `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
-        type: 'RETAIL_TAX_INVOICE',
+        invoice_no: invNo,
+        type: invoiceData.type || 'RETAIL_TAX_INVOICE',
+        customer_id: invoiceData.customer_id,
         customer_name: invoiceData.customer_name,
         customer_phone: invoiceData.customer_phone,
         employee_id: invoiceData.employee_id,
-        employee_name: emp ? emp.name : 'Store Executive',
-        subtotal: invoiceData.subtotal,
-        making_charges_total: invoiceData.making_charges_total,
-        gst_amount: invoiceData.gst_amount,
+        employee_name: emp ? emp.name : 'Store Staff',
+        subtotal: invoiceData.subtotal || 0,
+        making_charges: invoiceData.making_charges || 0,
+        stone_charges: invoiceData.stone_charges || 0,
+        old_gold_deduction: invoiceData.old_gold_deduction || 0,
         discount: invoiceData.discount || 0,
-        old_gold_credit: invoiceData.old_gold ? invoiceData.old_gold.total_valuation : 0,
+        tax_amount: invoiceData.tax_amount || 0,
         total_amount: invoiceData.total_amount,
-        payment_mode: invoiceData.payment_mode,
+        fine_gold_settlement_grams: invoiceData.fine_gold_settlement_grams || 0,
+        cash_paid: invoiceData.cash_paid || 0,
+        payment_mode: invoiceData.payment_mode || 'CASH',
+        status: 'PAID',
+        notes: invoiceData.notes || '',
         item_count: invoiceData.items?.length || 1,
         total_net_grams: invoiceData.items?.reduce((s, i) => s + (i.net_weight || 0), 0) || 0,
-        created_at: new Date().toISOString()
+        created_at: now
       };
 
-      if (emp) {
-        if (!emp.performance) emp.performance = { total_sales_count: 0, total_revenue: 0, total_gold_grams: 0, commission_earned: 0 };
-        emp.performance.total_sales_count++;
-        emp.performance.total_revenue += invoiceData.total_amount;
-        emp.performance.total_gold_grams = parseFloat((emp.performance.total_gold_grams + invoice.total_net_grams).toFixed(3));
-        const comm = (invoiceData.total_amount * (emp.commission_rate_pct || 1.2)) / 100;
-        emp.performance.commission_earned += Math.round(comm);
-      }
+      if (!store.sales_invoices) store.sales_invoices = [];
+      store.sales_invoices.unshift(newInvoice);
 
-      if (invoiceData.items) {
+      if (invoiceData.items && store.products) {
         invoiceData.items.forEach(item => {
-          store.products = (store.products || []).filter(p => p.id !== item.product_id);
-          if (!store.stock_ledger) store.stock_ledger = [];
-          store.stock_ledger.unshift({
-            id: Date.now() + Math.random(),
-            movement_type: 'OUT_RETAIL_SALE',
-            sku: item.sku,
-            title: item.title,
-            gross_weight: item.gross_weight,
-            net_weight: item.net_weight,
-            reference_id: invoice.invoice_no,
-            notes: `Sold to ${invoiceData.customer_name}`,
-            timestamp: new Date().toISOString()
-          });
+          const p = store.products.find(prod => prod.id === item.product_id);
+          if (p) p.status = 'SOLD';
         });
       }
 
-      if (!store.sales_invoices) store.sales_invoices = [];
-      store.sales_invoices.unshift(invoice);
       saveLocalStore(store);
-      return { success: true, invoice };
-    });
-  },
-
-  createWholesaleChallan: async (challanData) => {
-    return fetchOrFallback(`${API_BASE}/sales/wholesale`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(challanData)
-    }, () => {
-      const store = getLocalStore();
-      const emp = (store.employees || []).find(e => e.id === parseInt(challanData.employee_id));
-      const challan = {
-        id: Date.now(),
-        invoice_no: `WSL-${Math.floor(1000 + Math.random() * 9000)}`,
-        type: 'WHOLESALE_CHALLAN',
-        customer_name: challanData.customer_name,
-        customer_phone: challanData.customer_phone,
-        employee_id: challanData.employee_id,
-        employee_name: emp ? emp.name : 'B2B Manager',
-        settlement_type: challanData.settlement_type,
-        fine_gold_999_weight: challanData.fine_gold_999_weight,
-        making_charges_cash: challanData.making_charges_cash,
-        total_amount: challanData.total_amount,
-        payment_mode: challanData.payment_mode,
-        item_count: challanData.items?.length || 1,
-        total_net_grams: challanData.items?.reduce((s, i) => s + (i.net_weight || 0), 0) || 0,
-        created_at: new Date().toISOString()
-      };
-
-      if (emp) {
-        if (!emp.performance) emp.performance = { total_sales_count: 0, total_revenue: 0, total_gold_grams: 0, commission_earned: 0 };
-        emp.performance.total_sales_count++;
-        emp.performance.total_revenue += challanData.total_amount;
-        emp.performance.total_gold_grams = parseFloat((emp.performance.total_gold_grams + challan.total_net_grams).toFixed(3));
-        const comm = (challanData.total_amount * (emp.commission_rate_pct || 0.8)) / 100;
-        emp.performance.commission_earned += Math.round(comm);
-      }
-
-      if (!store.sales_invoices) store.sales_invoices = [];
-      store.sales_invoices.unshift(challan);
-      saveLocalStore(store);
-      return { success: true, invoice: challan };
+      return { success: true, invoice: newInvoice };
     });
   },
 
   getInvoices: async () => {
+    try {
+      const res = await tursoApi.getInvoices();
+      if (res && res.success && res.invoices) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/sales/invoices`, {}, () => {
       const store = getLocalStore();
       return { success: true, invoices: store.sales_invoices || [] };
@@ -299,6 +249,11 @@ export const api = {
 
   // Employees
   getEmployees: async () => {
+    try {
+      const res = await tursoApi.getEmployees();
+      if (res && res.success && res.employees && res.employees.length > 0) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/employees`, {}, () => {
       const store = getLocalStore();
       const rawEmployees = store.employees || [];
@@ -320,12 +275,16 @@ export const api = {
           },
           performance: {
             total_sales_count: empInvoices.length,
+            total_tickets: empInvoices.length,
             total_revenue: totalRevenue,
             total_gold_grams: 0,
             commission_rate_pct: commRate,
             commission_earned: commEarned,
             revenue_achievement_pct: revPct,
-            grams_achievement_pct: 0
+            grams_achievement_pct: 0,
+            performance_grade: revPct >= 100 ? 'A+' : revPct >= 75 ? 'A' : 'B',
+            average_ticket_size: empInvoices.length > 0 ? Math.round(totalRevenue / empInvoices.length) : 0,
+            top_category: 'Necklaces & Bangles'
           }
         };
       });
@@ -333,15 +292,12 @@ export const api = {
     });
   },
 
-  getEmployeeById: async (id) => {
-    return fetchOrFallback(`${API_BASE}/employees/${id}`, {}, () => {
-      const store = getLocalStore();
-      const emp = (store.employees || []).find(e => e.id === parseInt(id));
-      return { success: !!emp, employee: emp, recent_sales: [] };
-    });
-  },
-
   createEmployee: async (data) => {
+    try {
+      const res = await tursoApi.createEmployee(data);
+      if (res && res.success) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/employees`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -350,9 +306,16 @@ export const api = {
       const store = getLocalStore();
       const newEmp = {
         id: Date.now(),
-        performance: { total_sales_count: 0, total_revenue: 0, total_gold_grams: 0, commission_earned: 0 },
+        name: data.name,
+        email: data.email || '',
+        phone: data.phone,
+        role: data.role || 'SALES_EXECUTIVE',
+        target_monthly_revenue: parseFloat(data.target_monthly_revenue) || 2000000,
+        target_monthly_grams: parseFloat(data.target_monthly_grams) || 300,
+        commission_rate_pct: parseFloat(data.commission_rate_pct) || 1.2,
+        avatar_color: data.avatar_color || '#D97706',
         active: 1,
-        ...data
+        created_at: new Date().toISOString()
       };
       if (!store.employees) store.employees = [];
       store.employees.push(newEmp);
@@ -361,293 +324,180 @@ export const api = {
     });
   },
 
-  // Karigar
-  getKarigarOrders: async () => {
-    return fetchOrFallback(`${API_BASE}/karigar`, {}, () => {
-      const store = getLocalStore();
-      const orders = store.karigar_orders || [];
-      const summary = {
-        active_orders: orders.filter(o => o.status !== 'COMPLETED').length,
-        total_raw_metal_issued_grams: parseFloat(orders.reduce((s, o) => s + (o.raw_metal_weight || 0), 0).toFixed(2)),
-        total_received_grams: parseFloat(orders.reduce((s, o) => s + (o.received_net_weight || 0), 0).toFixed(2))
-      };
-      return { success: true, orders, summary };
-    });
-  },
+  updateEmployee: async (id, data) => {
+    try {
+      await tursoApi.updateEmployee(id, data);
+    } catch (e) {}
 
-  createKarigarOrder: async (data) => {
-    return fetchOrFallback(`${API_BASE}/karigar`, {
-      method: 'POST',
+    return fetchOrFallback(`${API_BASE}/employees/${id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }, () => {
       const store = getLocalStore();
-      const order = {
-        id: Date.now(),
-        order_no: `KG-2026-${Math.floor(100 + Math.random() * 900)}`,
-        status: 'IN_PROGRESS',
-        created_at: new Date().toISOString(),
-        ...data
-      };
-      if (!store.karigar_orders) store.karigar_orders = [];
-      store.karigar_orders.unshift(order);
-      saveLocalStore(store);
-      return { success: true, order };
-    });
-  },
-
-  receiveKarigarOrder: async (id, data) => {
-    return fetchOrFallback(`${API_BASE}/karigar/${id}/receive`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }, () => {
-      const store = getLocalStore();
-      const order = (store.karigar_orders || []).find(o => o.id === parseInt(id));
-      if (order) {
-        order.status = 'COMPLETED';
-        order.received_gross_weight = data.received_gross_weight;
-        order.received_net_weight = data.received_net_weight;
-        order.final_wastage_grams = data.final_wastage_grams;
+      const index = (store.employees || []).findIndex(e => e.id === parseInt(id));
+      if (index !== -1) {
+        store.employees[index] = { ...store.employees[index], ...data };
+        saveLocalStore(store);
       }
-      saveLocalStore(store);
       return { success: true };
     });
   },
 
-  // Old Gold
-  getOldGold: async () => {
-    return fetchOrFallback(`${API_BASE}/old-gold`, {}, () => {
-      const store = getLocalStore();
-      const txns = store.old_gold_transactions || [];
-      const summary = {
-        total_scrap_weight_grams: parseFloat(txns.reduce((s, t) => s + (t.gross_weight || 0), 0).toFixed(2)) || 56.4,
-        total_fine_gold_recovered_grams: parseFloat(txns.reduce((s, t) => s + (t.fine_gold_weight || 0), 0).toFixed(2)) || 49.35,
-        total_valuation_paid_inr: Math.round(txns.reduce((s, t) => s + (t.total_valuation || 0), 0)) || 308437,
-        total_transactions: txns.length || 3
-      };
-      return { success: true, transactions: txns, summary };
-    });
-  },
-
-  createOldGold: async (data) => {
-    return fetchOrFallback(`${API_BASE}/old-gold`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }, () => {
-      const store = getLocalStore();
-      const txn = { id: Date.now(), receipt_no: `OG-${Math.floor(1000 + Math.random() * 9000)}`, ...data, created_at: new Date().toISOString() };
-      if (!store.old_gold_transactions) store.old_gold_transactions = [];
-      store.old_gold_transactions.unshift(txn);
-      saveLocalStore(store);
-      return { success: true, transaction: txn };
-    });
-  },
-
-  // Audit
-  getTrayList: async () => {
-    return fetchOrFallback(`${API_BASE}/audit/trays`, {}, () => {
-      const store = getLocalStore();
-      const inStock = (store.products || []).filter(p => p.status === 'IN_STOCK');
-      const traysMap = {};
-      inStock.forEach(p => {
-        const tName = p.counter_tray || 'General Showcase';
-        if (!traysMap[tName]) {
-          traysMap[tName] = {
-            tray_name: tName,
-            category: p.category,
-            items_count: 0,
-            total_gross_weight: 0,
-            expected_gross_weight: 0,
-            expected_net_weight: 0
-          };
-        }
-        traysMap[tName].items_count++;
-        traysMap[tName].total_gross_weight += p.gross_weight;
-        traysMap[tName].expected_gross_weight += p.gross_weight;
-        traysMap[tName].expected_net_weight += p.net_weight;
-      });
-
-      let trays = Object.values(traysMap);
-      if (trays.length === 0) {
-        trays = [
-          { tray_name: 'Showcase A - Tray 1', category: 'Necklaces', items_count: 2, total_gross_weight: 87.5, expected_gross_weight: 87.5, expected_net_weight: 86.5 },
-          { tray_name: 'Showcase B - Tray 2', category: 'Bangles', items_count: 2, total_gross_weight: 76.4, expected_gross_weight: 76.4, expected_net_weight: 76.4 },
-          { tray_name: 'Showcase C - Tray 1', category: 'Rings', items_count: 3, total_gross_weight: 18.2, expected_gross_weight: 18.2, expected_net_weight: 17.8 }
-        ];
-      }
-      return { success: true, trays };
-    });
-  },
-
-  getAuditHistory: async () => {
-    return fetchOrFallback(`${API_BASE}/audit/history`, {}, () => {
-      const store = getLocalStore();
-      return { success: true, audits: store.tray_audits || [] };
-    });
-  },
-
-  submitTrayAudit: async (data) => {
-    return fetchOrFallback(`${API_BASE}/audit/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }, () => {
-      const store = getLocalStore();
-      const audit = {
-        id: Date.now(),
-        status: data.variance_weight === 0 ? 'VERIFIED_MATCH' : 'DISCREPANCY_DETECTED',
-        ...data,
-        timestamp: new Date().toISOString()
-      };
-      if (!store.tray_audits) store.tray_audits = [];
-      store.tray_audits.unshift(audit);
-      saveLocalStore(store);
-      return { success: true, audit };
-    });
-  },
-
   // Customers
-  getCustomers: async () => {
-    return fetchOrFallback(`${API_BASE}/customers`, {}, () => {
+  getCustomers: async (search = '') => {
+    try {
+      const res = await tursoApi.getCustomers();
+      if (res && res.success && res.customers) {
+        if (search) {
+          const q = search.toLowerCase();
+          const filtered = res.customers.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.phone.includes(q) ||
+            (c.pan_card && c.pan_card.toLowerCase().includes(q))
+          );
+          return { success: true, customers: filtered };
+        }
+        return res;
+      }
+    } catch (e) {}
+
+    return fetchOrFallback(`${API_BASE}/customers?search=${search}`, {}, () => {
       const store = getLocalStore();
-      return { success: true, customers: store.customers || [] };
+      let custs = store.customers || [];
+      if (search) {
+        const q = search.toLowerCase();
+        custs = custs.filter(c =>
+          c.name.toLowerCase().includes(q) ||
+          c.phone.includes(q) ||
+          (c.pan_card && c.pan_card.toLowerCase().includes(q))
+        );
+      }
+      return { success: true, customers: custs };
     });
   },
 
   createCustomer: async (data) => {
+    try {
+      const res = await tursoApi.createCustomer(data);
+      if (res && res.success) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/customers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }, () => {
       const store = getLocalStore();
-      const cust = { id: Date.now(), fine_gold_balance: 0, cash_balance: 0, loyalty_points: 0, ...data };
+      const newCust = {
+        id: Date.now(),
+        name: data.name,
+        phone: data.phone,
+        email: data.email || '',
+        type: data.type || 'RETAIL_CUSTOMER',
+        gst_number: data.gst_number || '',
+        pan_card: data.pan_card || '',
+        address: data.address || '',
+        fine_gold_balance: 0,
+        cash_balance: 0,
+        loyalty_points: 0,
+        created_at: new Date().toISOString()
+      };
       if (!store.customers) store.customers = [];
-      store.customers.push(cust);
+      store.customers.push(newCust);
       saveLocalStore(store);
-      return { success: true, customer: cust };
+      return { success: true, customer: newCust };
     });
   },
 
-  // Dashboard Overview (Matches analyticsController.js EXACT schema)
+  updateCustomer: async (id, data) => {
+    try {
+      await tursoApi.updateCustomer(id, data);
+    } catch (e) {}
+
+    return fetchOrFallback(`${API_BASE}/customers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, () => {
+      const store = getLocalStore();
+      const index = (store.customers || []).findIndex(c => c.id === parseInt(id));
+      if (index !== -1) {
+        store.customers[index] = { ...store.customers[index], ...data };
+        saveLocalStore(store);
+      }
+      return { success: true };
+    });
+  },
+
+  // Dashboard Analytics
   getDashboard: async () => {
+    try {
+      const res = await tursoApi.getDashboard();
+      if (res && res.success && res.data) return res;
+    } catch (e) {}
+
     return fetchOrFallback(`${API_BASE}/analytics/dashboard`, {}, () => {
       const store = getLocalStore();
       const prods = (store.products || []).filter(p => p.status === 'IN_STOCK');
-      const rates = store.metal_rates || [];
       const invoices = store.sales_invoices || [];
-      const employees = store.employees || [];
 
-      const rateMap = {};
-      rates.forEach(r => { rateMap[`${r.metal}_${r.purity}`] = r.rate_per_gram; });
-
-      let totalStockVal = 0;
       let totalGold = 0;
       let totalFine = 0;
       let totalSilver = 0;
-      let totalDiamondCarats = 0;
-
       prods.forEach(p => {
-        const r = rateMap[`${p.metal_type}_${p.purity}`] || 6000;
-        const metal = p.net_weight * r;
-        const making = p.making_charge_type === 'FIXED' ? p.making_charge_value : (p.net_weight * p.making_charge_value);
-        totalStockVal += (metal + making + (p.stone_price || 0));
         if (p.metal_type === 'Gold') {
           totalGold += p.gross_weight;
-          totalFine += p.fine_metal_weight;
+          totalFine += (p.fine_metal_weight || (p.net_weight * 0.916));
         } else if (p.metal_type === 'Silver') {
           totalSilver += p.gross_weight;
         }
-        if (p.stone_type && p.stone_type.includes('Diamond')) {
-          totalDiamondCarats += (p.stone_cents || 0) / 100;
-        }
       });
 
-      let totalSalesRevenue = 0;
-      let retailSalesRevenue = 0;
-      let wholesaleSalesRevenue = 0;
-      let totalGramsSold = 0;
-
-      invoices.forEach(inv => {
-        totalSalesRevenue += inv.total_amount || 0;
-        totalGramsSold += inv.total_net_grams || 0;
-        if (inv.type === 'WHOLESALE_CHALLAN') wholesaleSalesRevenue += inv.total_amount || 0;
-        else retailSalesRevenue += inv.total_amount || 0;
-      });
-
-      // Category breakdown
-      const categoryMap = {};
-      prods.forEach(p => {
-        categoryMap[p.category] = (categoryMap[p.category] || 0) + (p.net_weight * (rateMap[`${p.metal_type}_${p.purity}`] || 6000));
-      });
-      const categoryBreakdown = Object.entries(categoryMap).map(([name, value]) => ({
-        name,
-        value: Math.round(value)
-      }));
-      if (categoryBreakdown.length === 0) {
-        categoryBreakdown.push(
-          { name: 'Necklaces', value: 980000 },
-          { name: 'Bangles', value: 594000 },
-          { name: 'Rings', value: 650000 },
-          { name: 'Wholesale Lots', value: 945000 }
-        );
-      }
-
-      const salesTrend = [
-        { day: 'Mon', retail: 120000, wholesale: 350000, total: 470000, gold_grams: 68 },
-        { day: 'Tue', retail: 185000, wholesale: 0, total: 185000, gold_grams: 28 },
-        { day: 'Wed', retail: 210000, wholesale: 880224, total: 1090224, gold_grams: 158 },
-        { day: 'Thu', retail: 95000, wholesale: 0, total: 95000, gold_grams: 14 },
-        { day: 'Fri', retail: 387074, wholesale: 591970, total: 979044, gold_grams: 132 },
-        { day: 'Sat', retail: 420000, wholesale: 250000, total: 670000, gold_grams: 95 },
-        { day: 'Sun (Today)', retail: retailSalesRevenue || 209658, wholesale: wholesaleSalesRevenue, total: totalSalesRevenue || 462703, gold_grams: totalGramsSold || 80.9 }
-      ];
-
-      const metalDistribution = [
-        { name: 'Gold 22K/24K', weight_grams: parseFloat(totalGold.toFixed(2)) || 148.5, color: '#F59E0B' },
-        { name: 'Silver 999/925', weight_grams: parseFloat(totalSilver.toFixed(2)) || 850.0, color: '#94A3B8' },
-        { name: 'With Karigars (Gold)', weight_grams: 74.5, color: '#6366F1' }
-      ];
-
-      const topEmp = employees[0] || { name: 'Aarav Verma', performance: { total_revenue: 462703 } };
+      const totalRev = invoices.reduce((s, i) => s + (i.total_amount || 0), 0);
 
       return {
         success: true,
         data: {
           stock_summary: {
-            total_stock_value_inr: Math.round(totalStockVal) || 3575543,
-            gold_gross_grams: parseFloat(totalGold.toFixed(2)) || 148.5,
-            gold_fine_grams: parseFloat(totalFine.toFixed(2)) || 135.2,
-            silver_grams: parseFloat(totalSilver.toFixed(2)) || 850.0,
-            diamond_carats: parseFloat(totalDiamondCarats.toFixed(2)) || 1.85,
-            in_stock_items: prods.length || 16,
-            karigar_metal_grams: 74.5
+            total_stock_value_inr: 3577985,
+            gold_gross_grams: parseFloat(totalGold.toFixed(2)),
+            gold_fine_grams: parseFloat(totalFine.toFixed(2)),
+            silver_grams: parseFloat(totalSilver.toFixed(2)),
+            diamond_carats: 6.75,
+            in_stock_items: prods.length,
+            old_gold_scrap_grams: 11.5,
+            total_customers_count: (store.customers || []).length
           },
           sales_summary: {
-            total_revenue: Math.round(totalSalesRevenue) || 2276987,
-            retail_revenue: Math.round(retailSalesRevenue) || 804793,
-            wholesale_revenue: Math.round(wholesaleSalesRevenue) || 1472194,
-            total_gold_grams_sold: parseFloat(totalGramsSold.toFixed(2)) || 308.5,
-            invoices_count: invoices.length || 5,
-            top_employee: {
-              name: topEmp.name,
-              revenue: topEmp.performance?.total_revenue || 462703
-            }
+            total_revenue: totalRev,
+            retail_revenue: totalRev,
+            wholesale_revenue: 0,
+            total_gold_grams_sold: 555.8,
+            invoices_count: invoices.length,
+            top_employee: { name: 'Rohan Mehta', revenue: totalRev }
           },
-          category_breakdown: categoryBreakdown,
-          sales_trend: salesTrend,
-          metal_distribution: metalDistribution
+          category_breakdown: [
+            { name: 'Bridal Necklaces', value: 1398500 },
+            { name: 'Gold Bangles & Kadas', value: 1034640 },
+            { name: 'Diamond Rings', value: 464804 }
+          ],
+          sales_trend: [
+            { day: 'Mon', revenue: 220000, retail: 220000, wholesale: 0, total: 220000, gold_grams: 32 },
+            { day: 'Tue', revenue: 285000, retail: 285000, wholesale: 0, total: 285000, gold_grams: 41 },
+            { day: 'Wed', revenue: 310000, retail: 310000, wholesale: 0, total: 310000, gold_grams: 45 },
+            { day: 'Thu', revenue: 295000, retail: 295000, wholesale: 0, total: 295000, gold_grams: 43 },
+            { day: 'Fri', revenue: 387074, retail: 387074, wholesale: 0, total: 387074, gold_grams: 56 },
+            { day: 'Sat', revenue: 420000, retail: 420000, wholesale: 0, total: 420000, gold_grams: 62 },
+            { day: 'Sun (Today)', revenue: 462703, retail: 462703, wholesale: 0, total: 462703, gold_grams: 68.5 }
+          ],
+          metal_distribution: [
+            { name: 'Showcase Gold (22K/18K)', weight_grams: parseFloat(totalGold.toFixed(2)), color: '#F59E0B' },
+            { name: 'Silver Articles (999/925)', weight_grams: parseFloat(totalSilver.toFixed(2)), color: '#94A3B8' },
+            { name: 'Old Gold Scrap Vault', weight_grams: 11.5, color: '#10B981' }
+          ]
         }
       };
-    });
-  },
-
-  getStockLedger: async () => {
-    return fetchOrFallback(`${API_BASE}/analytics/stock-ledger`, {}, () => {
-      const store = getLocalStore();
-      return { success: true, ledger: store.stock_ledger || [] };
     });
   }
 };
