@@ -240,6 +240,14 @@ export const api = {
     });
   },
 
+  createRetailInvoice: async (payload) => {
+    return api.createInvoice({ ...payload, type: 'RETAIL_TAX_INVOICE' });
+  },
+
+  createWholesaleChallan: async (payload) => {
+    return api.createInvoice({ ...payload, type: 'WHOLESALE_CHALLAN' });
+  },
+
   getInvoices: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return fetchOrFallback(`${API_BASE}/sales/invoices?${query}`, {}, () => {

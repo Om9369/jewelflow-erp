@@ -60,14 +60,15 @@ export default function WholesalePOS({ rates, onInvoiceCreated }) {
   };
 
   const toggleLot = (lot) => {
-    if (selectedLots.find(l => l.id === lot.id)) {
-      setSelectedLots(selectedLots.filter(l => l.id !== lot.id));
+    const lotKey = lot._id || lot.id || lot.sku;
+    if (selectedLots.find(l => (l._id || l.id || l.sku) === lotKey)) {
+      setSelectedLots(selectedLots.filter(l => (l._id || l.id || l.sku) !== lotKey));
     } else {
       const liveRate = getRateFor(lot.metal_type, lot.purity);
-      const making = lot.making_charge_type === 'FIXED' ? lot.making_charge_value : (lot.net_weight * lot.making_charge_value);
+      const making = lot.making_charge_type === 'FIXED' ? (lot.making_charge_value || 0) : ((lot.net_weight || 0) * (lot.making_charge_value || 0));
       setSelectedLots([...selectedLots, {
         ...lot,
-        product_id: lot.id,
+        product_id: lotKey,
         metal_rate: liveRate,
         making_charge: making
       }]);
@@ -244,13 +245,14 @@ export default function WholesalePOS({ rates, onInvoiceCreated }) {
               </div>
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                {wholesaleLots.map((lot) => {
-                  const isSelected = selectedLots.some(l => l.id === lot.id);
+                {wholesaleLots.map((lot, lotIdx) => {
+                  const lotKey = lot._id || lot.id || lot.sku;
+                  const isSelected = selectedLots.some(l => (l._id || l.id || l.sku) === lotKey);
                   const fineEquiv = ((lot.net_weight * (lot.touch_pct || 91.6)) / 100).toFixed(2);
 
                   return (
                     <div
-                      key={lot.id}
+                      key={lotKey || lotIdx}
                       onClick={() => toggleLot(lot)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
                         isSelected

@@ -93,7 +93,10 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
 
   // Add Item to Cart
   const addToCart = (product) => {
-    if (cart.find(item => item.product_id === product.id)) return;
+    const prodKey = product._id || product.id || product.sku;
+    if (cart.find(item => (item.product_id && item.product_id === prodKey) || (item.sku && product.sku && item.sku === product.sku))) {
+      return;
+    }
 
     const liveRate = getRateFor(product.metal_type, product.purity);
     const metalVal = product.net_weight * liveRate;
@@ -104,7 +107,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
     const totalItemPrice = Math.round(metalVal + makingVal + stoneVal);
 
     const cartItem = {
-      product_id: product.id,
+      product_id: prodKey,
       sku: product.sku,
       barcode: product.barcode,
       title: product.title,
@@ -122,7 +125,7 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
       pieces: 1
     };
 
-    setCart([...cart, cartItem]);
+    setCart(prev => [...prev, cartItem]);
   };
 
   const removeFromCart = (index) => {
@@ -236,12 +239,20 @@ export default function RetailPOS({ rates, onInvoiceCreated }) {
     }
   };
 
-  const filteredStock = stockItems.filter(
-    p => !cart.some(c => c.product_id === p.id) &&
-      (p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       (p.huid && p.huid.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  const filteredStock = stockItems.filter(p => {
+    const prodKey = p._id || p.id || p.sku;
+    const isAlreadyInCart = cart.some(c => (c.product_id && prodKey && c.product_id === prodKey) || (c.sku && p.sku && c.sku === p.sku));
+    if (isAlreadyInCart) return false;
+
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.sku && p.sku.toLowerCase().includes(q)) ||
+      (p.barcode && p.barcode.includes(q)) ||
+      (p.huid && p.huid.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
