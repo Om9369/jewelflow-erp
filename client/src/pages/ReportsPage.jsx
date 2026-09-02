@@ -45,9 +45,9 @@ export default function ReportsPage({ onPrintInvoice }) {
         api.getStockLedger({ movement_type: 'ALL' })
       ]);
 
-      if (invRes.success) setInvoices(invRes.invoices || []);
-      if (purRes.success) setPurchases(purRes.purchases || []);
-      if (ledgRes.success) setLedger(ledgRes.ledger || []);
+      if (invRes && invRes.success) setInvoices(invRes.invoices || []);
+      if (purRes && purRes.success) setPurchases(purRes.purchases || []);
+      if (ledgRes && ledgRes.success) setLedger(ledgRes.ledger || []);
     } catch (err) {
       console.error('Error loading reports data:', err);
     } finally {

@@ -60,18 +60,19 @@ export default function StockAudit() {
 
     try {
       const payload = {
-        tray_name: selectedTray.tray_name,
-        category: Object.keys(selectedTray.categories).join(', '),
-        metal_type: Object.keys(selectedTray.metals).join(', '),
-        physical_items_count: parseInt(physCount),
-        physical_total_weight: parseFloat(physWeight),
+        tray_name: selectedTray.tray_name || 'Showcase Tray',
+        category: selectedTray.categories ? Object.keys(selectedTray.categories).join(', ') : (selectedTray.category || 'All'),
+        metal_type: selectedTray.metals ? Object.keys(selectedTray.metals).join(', ') : (selectedTray.metal_type || 'Gold'),
+        physical_items_count: parseInt(physCount) || 0,
+        physical_total_weight: parseFloat(physWeight) || 0,
         audited_by: auditedBy,
         notes: notes
       };
 
-      const res = await api.submitTrayAudit(payload);
-      if (res.success) {
-        setAuditResult(res.variance);
+      const submitFn = api.submitTrayAudit || api.submitAudit;
+      const res = await submitFn(payload);
+      if (res && res.success) {
+        setAuditResult(res.variance || { variance_pieces: 0, variance_weight: 0, status: 'RECONCILED' });
         loadData();
       }
     } catch (err) {
@@ -129,9 +130,8 @@ export default function StockAudit() {
                       <Layers className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-100">{tray.tray_name}</p>
                       <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        {tray.items_count} pcs • {Object.keys(tray.categories).join(', ')}
+                        {tray.items_count || 0} pcs • {typeof tray.categories === 'object' && tray.categories ? Object.keys(tray.categories).join(', ') : (tray.category || 'All')}
                       </p>
                     </div>
                   </div>
@@ -168,11 +168,11 @@ export default function StockAudit() {
               {/* Items in Tray Details */}
               <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Registered Tray Contents ({selectedTray.items.length} items):
+                  Registered Tray Contents ({selectedTray.items?.length || 0} items):
                 </p>
                 <div className="max-h-24 overflow-y-auto space-y-1 pr-1">
-                  {selectedTray.items.map((it) => (
-                    <div key={it.id} className="flex justify-between text-slate-300 font-mono text-[11px]">
+                  {(selectedTray.items || []).map((it, itemIdx) => (
+                    <div key={it.id || itemIdx} className="flex justify-between text-slate-300 font-mono text-[11px]">
                       <span>{it.title} ({it.sku})</span>
                       <span className="text-amber-400 font-bold">{it.gross_weight}g</span>
                     </div>

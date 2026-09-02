@@ -120,7 +120,7 @@ export default function OldGoldPage({ rates }) {
           <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
             <span className="text-xs text-slate-400 font-medium block">Total Payouts & Invoice Credits</span>
             <span className="text-2xl font-bold font-mono text-emerald-400 mt-1 block">
-              ₹{summary.total_valuation_paid_or_credited.toLocaleString()}
+              ₹{(summary.total_valuation_paid_or_credited || 0).toLocaleString()}
             </span>
           </div>
         </div>

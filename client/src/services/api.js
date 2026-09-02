@@ -55,7 +55,7 @@ export const api = {
     });
   },
 
-  // ─── Inventory ─────────────────────────────────────────────────────────────
+  // ─── Inventory & Stock ──────────────────────────────────────────────────────
   getInventory: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return fetchOrFallback(`${API_BASE}/inventory?${query}`, {}, () => {
@@ -82,7 +82,47 @@ export const api = {
           (p.huid && p.huid.toLowerCase().includes(q))
         );
       }
-      return { success: true, products: prods, items: prods, total: prods.length };
+      return { success: true, products: prods, items: prods, count: prods.length, total: prods.length };
+    });
+  },
+
+  getInventoryStats: async () => {
+    return fetchOrFallback(`${API_BASE}/inventory/stats`, {}, () => {
+      const store = getLocalStore();
+      const prods = (store.products || []).filter(p => p.status === 'IN_STOCK');
+      const rates = store.metal_rates || [];
+      const rateMap = {};
+      rates.forEach(r => { rateMap[`${r.metal}_${r.purity}`] = r.rate_per_gram; });
+
+      let totalVal = 0;
+      let totalGross = 0;
+      let totalNet = 0;
+      let totalGold = 0;
+      let totalSilver = 0;
+
+      prods.forEach(p => {
+        const r = rateMap[`${p.metal_type}_${p.purity}`] || 6750;
+        const metal = (p.net_weight || 0) * r;
+        const making = p.making_charge_type === 'FIXED' ? (p.making_charge_value || 0) : ((p.net_weight || 0) * (p.making_charge_value || 0));
+        totalVal += (metal + making + (p.stone_price || 0));
+        totalGross += (p.gross_weight || 0);
+        totalNet += (p.net_weight || 0);
+        if (p.metal_type === 'Gold') totalGold += (p.gross_weight || 0);
+        else if (p.metal_type === 'Silver') totalSilver += (p.gross_weight || 0);
+      });
+
+      return {
+        success: true,
+        stats: {
+          total_items: prods.length,
+          total_gross_weight: parseFloat(totalGross.toFixed(3)),
+          total_net_weight: parseFloat(totalNet.toFixed(3)),
+          total_valuation: Math.round(totalVal),
+          gold_grams: parseFloat(totalGold.toFixed(3)),
+          silver_grams: parseFloat(totalSilver.toFixed(3)),
+          in_stock_count: prods.length
+        }
+      };
     });
   },
 
@@ -103,8 +143,8 @@ export const api = {
       const store = getLocalStore();
       const newProduct = {
         id: Date.now(),
-        sku: `JW-${productData.metal_type ? productData.metal_type.substring(0, 3).toUpperCase() : 'GLD'}-${Math.floor(1000 + Math.random() * 9000)}`,
-        barcode: Math.floor(10000000 + Math.random() * 90000000).toString(),
+        sku: productData.sku || `JW-${productData.metal_type ? productData.metal_type.substring(0, 3).toUpperCase() : 'GLD'}-${Math.floor(1000 + Math.random() * 9000)}`,
+        barcode: productData.barcode || Math.floor(10000000 + Math.random() * 90000000).toString(),
         status: 'IN_STOCK',
         created_at: new Date().toISOString(),
         ...productData
@@ -143,16 +183,19 @@ export const api = {
     });
   },
 
-  // ─── Sales Invoices ─────────────────────────────────────────────────────────
+  // ─── Sales Invoices & Orders ───────────────────────────────────────────────
   createInvoice: async (invoiceData) => {
-    return fetchOrFallback(`${API_BASE}/sales/invoices`, {
+    const isWholesale = invoiceData.type === 'WHOLESALE_CHALLAN';
+    const endpoint = isWholesale ? `${API_BASE}/sales/wholesale` : `${API_BASE}/sales/retail`;
+
+    return fetchOrFallback(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(invoiceData)
     }, () => {
       const store = getLocalStore();
       const now = new Date().toISOString();
-      const invNo = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const invNo = invoiceData.invoice_no || `INV-${Math.floor(1000 + Math.random() * 9000)}`;
       const emp = (store.employees || []).find(e => e.id === parseInt(invoiceData.employee_id));
 
       const newInvoice = {
@@ -176,6 +219,7 @@ export const api = {
         payment_mode: invoiceData.payment_mode || 'CASH',
         status: 'PAID',
         notes: invoiceData.notes || '',
+        items: invoiceData.items || [],
         item_count: invoiceData.items?.length || 1,
         total_net_grams: invoiceData.items?.reduce((s, i) => s + (i.net_weight || 0), 0) || 0,
         created_at: now
@@ -186,7 +230,7 @@ export const api = {
 
       if (invoiceData.items && store.products) {
         invoiceData.items.forEach(item => {
-          const p = store.products.find(prod => prod.id === item.product_id);
+          const p = store.products.find(prod => prod.id === (item.product_id || item.id));
           if (p) p.status = 'SOLD';
         });
       }
@@ -196,8 +240,9 @@ export const api = {
     });
   },
 
-  getInvoices: async () => {
-    return fetchOrFallback(`${API_BASE}/sales/invoices`, {}, () => {
+  getInvoices: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetchOrFallback(`${API_BASE}/sales/invoices?${query}`, {}, () => {
       const store = getLocalStore();
       return { success: true, invoices: store.sales_invoices || [] };
     });
@@ -211,7 +256,7 @@ export const api = {
     });
   },
 
-  // ─── Employees ──────────────────────────────────────────────────────────────
+  // ─── Employees & Analytics ──────────────────────────────────────────────────
   getEmployees: async () => {
     return fetchOrFallback(`${API_BASE}/employees`, {}, () => {
       const store = getLocalStore();
@@ -294,7 +339,7 @@ export const api = {
     });
   },
 
-  // ─── Customers ─────────────────────────────────────────────────────────────
+  // ─── Customers & VIP KYC ───────────────────────────────────────────────────
   getCustomers: async (search = '') => {
     return fetchOrFallback(`${API_BASE}/customers?search=${encodeURIComponent(search)}`, {}, () => {
       const store = getLocalStore();
@@ -355,15 +400,29 @@ export const api = {
     });
   },
 
-  // ─── Old Gold Scrap & Exchange ─────────────────────────────────────────────
-  getOldGoldTransactions: async () => {
+  // ─── Old Gold Scrap Buyback ─────────────────────────────────────────────────
+  getOldGold: async () => {
     return fetchOrFallback(`${API_BASE}/old-gold`, {}, () => {
       const store = getLocalStore();
-      return { success: true, transactions: store.old_gold_transactions || [] };
+      const txs = store.old_gold_transactions || [];
+      const totalNet = txs.reduce((sum, t) => sum + (Number(t.net_weight || t.gross_weight) || 0), 0);
+      const totalFine = txs.reduce((sum, t) => sum + (Number(t.fine_gold_weight) || 0), 0);
+      const totalPayout = txs.reduce((sum, t) => sum + (Number(t.total_valuation) || 0), 0);
+
+      return {
+        success: true,
+        transactions: txs,
+        summary: {
+          total_transactions: txs.length,
+          total_net_grams: parseFloat(totalNet.toFixed(3)),
+          total_fine_gold_grams: parseFloat(totalFine.toFixed(3)),
+          total_valuation_payout: Math.round(totalPayout)
+        }
+      };
     });
   },
 
-  createOldGoldTransaction: async (data) => {
+  createOldGold: async (data) => {
     return fetchOrFallback(`${API_BASE}/old-gold`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -383,7 +442,197 @@ export const api = {
     });
   },
 
-  // ─── Dashboard Analytics ───────────────────────────────────────────────────
+  getOldGoldTransactions: async () => {
+    return api.getOldGold();
+  },
+
+  createOldGoldTransaction: async (data) => {
+    return api.createOldGold(data);
+  },
+
+  // ─── Showcase Tray & Stock Audit ───────────────────────────────────────────
+  getTrayList: async () => {
+    return fetchOrFallback(`${API_BASE}/audit/trays`, {}, () => {
+      const store = getLocalStore();
+      const prods = (store.products || []).filter(p => p.status === 'IN_STOCK');
+      
+      const trayMap = {};
+      prods.forEach(p => {
+        const trayKey = p.counter_tray || 'Showcase Main Tray';
+        if (!trayMap[trayKey]) {
+          trayMap[trayKey] = {
+            tray_name: trayKey,
+            counter_tray: trayKey,
+            category: p.category || 'All Categories',
+            metal_type: p.metal_type || 'Gold',
+            items_count: 0,
+            total_gross_weight: 0,
+            total_net_weight: 0,
+            items: []
+          };
+        }
+        trayMap[trayKey].items_count += 1;
+        trayMap[trayKey].total_gross_weight += (p.gross_weight || 0);
+        trayMap[trayKey].total_net_weight += (p.net_weight || 0);
+        trayMap[trayKey].items.push(p);
+      });
+
+      const trays = Object.values(trayMap).map(t => ({
+        ...t,
+        total_gross_weight: parseFloat(t.total_gross_weight.toFixed(3)),
+        total_net_weight: parseFloat(t.total_net_weight.toFixed(3))
+      }));
+
+      return {
+        success: true,
+        trays: trays.length > 0 ? trays : [
+          {
+            tray_name: 'Showcase A - Tray 1 (Necklaces)',
+            counter_tray: 'Showcase A - Tray 1',
+            category: 'Necklaces',
+            metal_type: 'Gold',
+            items_count: 6,
+            total_gross_weight: 185.4,
+            total_net_weight: 178.2
+          },
+          {
+            tray_name: 'Showcase B - Tray 2 (Bangles)',
+            counter_tray: 'Showcase B - Tray 2',
+            category: 'Bangles',
+            metal_type: 'Gold',
+            items_count: 8,
+            total_gross_weight: 142.5,
+            total_net_weight: 142.5
+          }
+        ]
+      };
+    });
+  },
+
+  getAuditHistory: async () => {
+    return fetchOrFallback(`${API_BASE}/audit/history`, {}, () => {
+      const store = getLocalStore();
+      return { success: true, audits: store.tray_audits || [] };
+    });
+  },
+
+  submitAudit: async (auditData) => {
+    return fetchOrFallback(`${API_BASE}/audit/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(auditData)
+    }, () => {
+      const store = getLocalStore();
+      const newAudit = {
+        id: Date.now(),
+        audit_date: new Date().toISOString().slice(0, 10),
+        status: auditData.status || 'RECONCILED',
+        created_at: new Date().toISOString(),
+        ...auditData
+      };
+      if (!store.tray_audits) store.tray_audits = [];
+      store.tray_audits.unshift(newAudit);
+      saveLocalStore(store);
+      return { success: true, audit: newAudit };
+    });
+  },
+
+  // ─── Stock Ledger & B2B Purchases ──────────────────────────────────────────
+  getStockLedger: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetchOrFallback(`${API_BASE}/analytics/stock-ledger?${query}`, {}, () => {
+      const store = getLocalStore();
+      const rawLedger = store.stock_ledger || [];
+      return { success: true, ledger: rawLedger };
+    });
+  },
+
+  getPurchases: async () => {
+    return fetchOrFallback(`${API_BASE}/purchases`, {}, () => {
+      const store = getLocalStore();
+      return { success: true, purchases: store.purchases || [] };
+    });
+  },
+
+  createPurchase: async (data) => {
+    return fetchOrFallback(`${API_BASE}/purchases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, () => {
+      const store = getLocalStore();
+      const newPur = {
+        id: Date.now(),
+        purchase_no: `PUR-${Math.floor(1000 + Math.random() * 9000)}`,
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      if (!store.purchases) store.purchases = [];
+      store.purchases.unshift(newPur);
+      saveLocalStore(store);
+      return { success: true, purchase: newPur };
+    });
+  },
+
+  // ─── Karigar / Artisan Ledger ──────────────────────────────────────────────
+  getKarigarOrders: async () => {
+    return fetchOrFallback(`${API_BASE}/karigar`, {}, () => {
+      const store = getLocalStore();
+      return { success: true, orders: store.karigar_orders || [] };
+    });
+  },
+
+  createKarigarOrder: async (data) => {
+    return fetchOrFallback(`${API_BASE}/karigar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, () => {
+      const store = getLocalStore();
+      const newOrder = {
+        id: Date.now(),
+        order_no: `KG-2026-${Math.floor(100 + Math.random() * 900)}`,
+        status: 'IN_PROGRESS',
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      if (!store.karigar_orders) store.karigar_orders = [];
+      store.karigar_orders.unshift(newOrder);
+      saveLocalStore(store);
+      return { success: true, order: newOrder };
+    });
+  },
+
+  // ─── Monthly Gold Savings Scheme ────────────────────────────────────────────
+  getSchemes: async () => {
+    return fetchOrFallback(`${API_BASE}/schemes`, {}, () => {
+      const store = getLocalStore();
+      return { success: true, schemes: store.gold_schemes || [] };
+    });
+  },
+
+  createScheme: async (data) => {
+    return fetchOrFallback(`${API_BASE}/schemes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, () => {
+      const store = getLocalStore();
+      const newSch = {
+        id: Date.now(),
+        scheme_account_no: `SCH-${Math.floor(10000 + Math.random() * 90000)}`,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      if (!store.gold_schemes) store.gold_schemes = [];
+      store.gold_schemes.unshift(newSch);
+      saveLocalStore(store);
+      return { success: true, scheme: newSch };
+    });
+  },
+
+  // ─── Dashboard Overview ────────────────────────────────────────────────────
   getDashboard: async () => {
     return fetchOrFallback(`${API_BASE}/analytics/dashboard`, {}, () => {
       const store = getLocalStore();
@@ -395,14 +644,14 @@ export const api = {
       let totalSilver = 0;
       prods.forEach(p => {
         if (p.metal_type === 'Gold') {
-          totalGold += p.gross_weight;
-          totalFine += (p.fine_metal_weight || (p.net_weight * 0.916));
+          totalGold += (p.gross_weight || 0);
+          totalFine += (p.fine_metal_weight || ((p.net_weight || 0) * 0.916));
         } else if (p.metal_type === 'Silver') {
-          totalSilver += p.gross_weight;
+          totalSilver += (p.gross_weight || 0);
         }
       });
 
-      const totalRev = invoices.reduce((s, i) => s + (i.total_amount || 0), 0);
+      const totalRev = invoices.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
 
       return {
         success: true,
