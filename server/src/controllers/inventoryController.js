@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Product, MetalRate, StockLedger } from '../models/index.js';
 
 export const getInventory = async (req, res) => {
@@ -83,9 +84,8 @@ export const getInventoryStats = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findOne({
-      $or: [{ _id: id }, { sku: id }, { barcode: id }]
-    });
+    const query = mongoose.isValidObjectId(id) ? { _id: id } : { $or: [{ sku: id }, { barcode: id }] };
+    const product = await Product.findOne(query);
 
     if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found' });
@@ -150,11 +150,8 @@ export const updateProduct = async (req, res) => {
       data.net_weight = Math.max(0, grossWt - stoneWt);
     }
 
-    const updated = await Product.findOneAndUpdate(
-      { $or: [{ _id: id }, { sku: id }] },
-      data,
-      { new: true }
-    );
+    const query = mongoose.isValidObjectId(id) ? { _id: id } : { sku: id };
+    const updated = await Product.findOneAndUpdate(query, data, { new: true });
 
     res.json({ success: true, product: updated });
   } catch (error) {
@@ -165,7 +162,8 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    await Product.findOneAndDelete({ $or: [{ _id: id }, { sku: id }] });
+    const query = mongoose.isValidObjectId(id) ? { _id: id } : { sku: id };
+    await Product.findOneAndDelete(query);
     res.json({ success: true, message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
