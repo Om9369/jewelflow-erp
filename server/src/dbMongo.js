@@ -28,7 +28,7 @@ export async function connectMongo() {
     await mongoose.connect(MONGO_URI);
     isConnected = true;
     console.log('🍃 Connected to MongoDB Atlas Cloud Cluster successfully.');
-    await _seedIfEmpty();
+    await _seedDefaultRatesIfEmpty();
     return mongoose.connection;
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
@@ -36,11 +36,11 @@ export async function connectMongo() {
   }
 }
 
-async function _seedIfEmpty() {
+async function _seedDefaultRatesIfEmpty() {
   try {
     const rateCount = await MetalRate.countDocuments();
     if (rateCount === 0) {
-      console.log('🌱 Seeding initial metal rates to MongoDB...');
+      console.log('🌱 Setting default metal rates in MongoDB...');
       await MetalRate.insertMany([
         { metal: 'Gold', purity: '24K (999)', rate_per_gram: 7250, currency: 'INR' },
         { metal: 'Gold', purity: '22K (916)', rate_per_gram: 6750, currency: 'INR' },
@@ -51,20 +51,7 @@ async function _seedIfEmpty() {
         { metal: 'Platinum', purity: '950 Pure', rate_per_gram: 3200, currency: 'INR' }
       ]);
     }
-
-    const empCount = await Employee.countDocuments();
-    if (empCount === 0) {
-      console.log('🌱 Seeding initial employees to MongoDB...');
-      await Employee.insertMany([
-        { name: 'Rohan Mehta', phone: '+91 98111 00001', role: 'STORE_MANAGER', target_monthly_revenue: 3500000, target_monthly_grams: 500, commission_rate_pct: 1.5, avatar_color: '#D97706' },
-        { name: 'Pooja Sharma', phone: '+91 98111 00002', role: 'SENIOR_SALES', target_monthly_revenue: 2500000, target_monthly_grams: 350, commission_rate_pct: 1.2, avatar_color: '#EC4899' },
-        { name: 'Amit Verma', phone: '+91 98111 00003', role: 'SALES_EXECUTIVE', target_monthly_revenue: 2000000, target_monthly_grams: 300, commission_rate_pct: 1.0, avatar_color: '#3B82F6' },
-        { name: 'Kavita Iyer', phone: '+91 98111 00004', role: 'SALES_EXECUTIVE', target_monthly_revenue: 1800000, target_monthly_grams: 250, commission_rate_pct: 1.0, avatar_color: '#10B981' },
-        { name: 'Suresh Patel', phone: '+91 98111 00005', role: 'CASHIER', target_monthly_revenue: 0, target_monthly_grams: 0, commission_rate_pct: 0, avatar_color: '#64748B' },
-        { name: 'Deepak Soni', phone: '+91 98111 00006', role: 'STOCK_AUDITOR', target_monthly_revenue: 0, target_monthly_grams: 0, commission_rate_pct: 0, avatar_color: '#8B5CF6' }
-      ]);
-    }
   } catch (e) {
-    console.warn('MongoDB seeding note:', e.message);
+    console.warn('MongoDB rates note:', e.message);
   }
 }
