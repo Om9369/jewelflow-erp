@@ -1,15 +1,14 @@
 {
   "name": "jewelflow-server",
   "version": "1.0.0",
-  "description": "Jewellery Inventory & Management Backend API",
+  "description": "Jewellery Inventory & Management Backend API (MongoDB Atlas)",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node --experimental-sqlite src/server.js",
-    "dev": "node --experimental-sqlite --watch src/server.js"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",

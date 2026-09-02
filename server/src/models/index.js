@@ -73,7 +73,7 @@ export const Product = mongoose.models.Product || mongoose.model('Product', Prod
 
 // ─── 5. Sales Invoice Schema ────────────────────────────────────────────────
 export const SalesItemSchema = new mongoose.Schema({
-  product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  product_id: { type: mongoose.Schema.Types.Mixed },
   sku: { type: String, default: '' },
   title: { type: String, required: true },
   category: { type: String, default: '' },
@@ -93,10 +93,10 @@ export const SalesItemSchema = new mongoose.Schema({
 export const SalesInvoiceSchema = new mongoose.Schema({
   invoice_no: { type: String, required: true, unique: true },
   type: { type: String, default: 'RETAIL_TAX_INVOICE' },
-  customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+  customer_id: { type: mongoose.Schema.Types.Mixed },
   customer_name: { type: String, required: true },
   customer_phone: { type: String, default: '' },
-  employee_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+  employee_id: { type: mongoose.Schema.Types.Mixed },
   employee_name: { type: String, required: true },
   subtotal: { type: Number, required: true },
   making_charges: { type: Number, default: 0 },
@@ -133,3 +133,59 @@ export const OldGoldSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 export const OldGoldTransaction = mongoose.models.OldGoldTransaction || mongoose.model('OldGoldTransaction', OldGoldSchema);
+
+// ─── 7. Stock Ledger Schema ──────────────────────────────────────────────────
+export const StockLedgerSchema = new mongoose.Schema({
+  product_id: { type: mongoose.Schema.Types.Mixed },
+  sku: { type: String, default: '' },
+  title: { type: String, default: '' },
+  category: { type: String, default: '' },
+  movement_type: { type: String, required: true },
+  gross_weight: { type: Number, default: 0 },
+  net_weight: { type: Number, default: 0 },
+  reference_id: { type: String, default: '' },
+  reference_type: { type: String, default: '' },
+  notes: { type: String, default: '' },
+  timestamp: { type: Date, default: Date.now }
+});
+export const StockLedger = mongoose.models.StockLedger || mongoose.model('StockLedger', StockLedgerSchema);
+
+// ─── 8. Showcase Tray Audit Schema ──────────────────────────────────────────
+export const TrayAuditSchema = new mongoose.Schema({
+  tray_name: { type: String, required: true },
+  category: { type: String, default: 'All' },
+  metal_type: { type: String, default: 'Gold' },
+  system_items_count: { type: Number, default: 0 },
+  system_total_weight: { type: Number, default: 0 },
+  physical_items_count: { type: Number, required: true },
+  physical_total_weight: { type: Number, required: true },
+  variance_pieces: { type: Number, default: 0 },
+  variance_weight: { type: Number, default: 0 },
+  audited_by: { type: String, default: 'Store Auditor' },
+  notes: { type: String, default: '' },
+  status: { type: String, default: 'RECONCILED' },
+  created_at: { type: Date, default: Date.now }
+});
+export const TrayAudit = mongoose.models.TrayAudit || mongoose.model('TrayAudit', TrayAuditSchema);
+
+// ─── 9. Karigar Order Schema ────────────────────────────────────────────────
+export const KarigarOrderSchema = new mongoose.Schema({
+  order_no: { type: String, required: true, unique: true },
+  karigar_name: { type: String, required: true },
+  karigar_phone: { type: String, default: '' },
+  issue_date: { type: String, default: '' },
+  due_date: { type: String, default: '' },
+  raw_metal_type: { type: String, default: 'Gold Bullion' },
+  raw_metal_purity: { type: String, default: '24K (999)' },
+  raw_metal_weight: { type: Number, default: 0 },
+  expected_item_type: { type: String, default: '' },
+  expected_pieces: { type: Number, default: 1 },
+  agreed_wastage_pct: { type: Number, default: 1.2 },
+  received_weight: { type: Number, default: 0 },
+  received_pieces: { type: Number, default: 0 },
+  status: { type: String, default: 'IN_PROGRESS' },
+  fine_gold_balance_diff: { type: Number, default: 0 },
+  notes: { type: String, default: '' },
+  created_at: { type: Date, default: Date.now }
+});
+export const KarigarOrder = mongoose.models.KarigarOrder || mongoose.model('KarigarOrder', KarigarOrderSchema);

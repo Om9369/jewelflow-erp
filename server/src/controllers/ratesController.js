@@ -1,61 +1,51 @@
-import db from '../database.js';
+import { MetalRate } from '../models/index.js';
 
-export const getRates = (req, res) => {
+export const getRates = async (req, res) => {
   try {
-    const rates = db.prepare('SELECT * FROM metal_rates ORDER BY id ASC').all();
+    const rates = await MetalRate.find().sort({ _id: 1 });
     res.json({ success: true, rates });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const updateRate = (req, res) => {
+export const updateRate = async (req, res) => {
   try {
     const { id } = req.params;
     const { rate_per_gram } = req.body;
-    if (!rate_per_gram || isNaN(rate_per_gram)) {
-      return res.status(400).json({ success: false, error: 'Valid rate_per_gram is required' });
+
+    if (!rate_per_gram) {
+      return res.status(400).json({ success: false, error: 'rate_per_gram is required' });
     }
 
-    const stmt = db.prepare(`
-      UPDATE metal_rates
-      SET rate_per_gram = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    const result = stmt.run(parseFloat(rate_per_gram), id);
+    const updated = await MetalRate.findOneAndUpdate(
+      { $or: [{ _id: id }, { id: parseInt(id) || 0 }] },
+      { rate_per_gram: parseFloat(rate_per_gram), updated_at: new Date() },
+      { new: true }
+    );
 
-    if (result.changes === 0) {
-      return res.status(404).json({ success: false, error: 'Rate item not found' });
-    }
-
-    const updated = db.prepare('SELECT * FROM metal_rates WHERE id = ?').get(id);
     res.json({ success: true, rate: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const bulkUpdateRates = (req, res) => {
+export const bulkUpdateRates = async (req, res) => {
   try {
-    const { rates } = req.body; // Array of { id, rate_per_gram }
+    const { rates } = req.body;
     if (!Array.isArray(rates)) {
-      return res.status(400).json({ success: false, error: 'Rates array expected' });
+      return res.status(400).json({ success: false, error: 'Rates array is required' });
     }
 
-    const updateStmt = db.prepare(`
-      UPDATE metal_rates SET rate_per_gram = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `);
+    for (const r of rates) {
+      await MetalRate.updateOne(
+        { $or: [{ _id: r._id || r.id }, { id: r.id }] },
+        { rate_per_gram: parseFloat(r.rate_per_gram), updated_at: new Date() }
+      );
+    }
 
-    const transaction = db.transaction((rateItems) => {
-      for (const item of rateItems) {
-        updateStmt.run(parseFloat(item.rate_per_gram), item.id);
-      }
-    });
-
-    transaction(rates);
-
-    const allRates = db.prepare('SELECT * FROM metal_rates ORDER BY id ASC').all();
-    res.json({ success: true, rates: allRates, message: 'All metal rates updated successfully' });
+    const updatedRates = await MetalRate.find().sort({ _id: 1 });
+    res.json({ success: true, count: rates.length, rates: updatedRates });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -1,8 +1,8 @@
-import db from '../database.js';
+import { OldGoldTransaction, StockLedger } from '../models/index.js';
 
-export const getOldGoldTransactions = (req, res) => {
+export const getOldGoldTransactions = async (req, res) => {
   try {
-    const list = db.prepare('SELECT * FROM old_gold_transactions ORDER BY created_at DESC').all();
+    const list = await OldGoldTransaction.find().sort({ created_at: -1 });
     const totalOldGoldWeight = list.reduce((sum, item) => sum + (item.net_weight || 0), 0);
     const totalValuation = list.reduce((sum, item) => sum + (item.total_valuation || 0), 0);
 
@@ -20,7 +20,7 @@ export const getOldGoldTransactions = (req, res) => {
   }
 };
 
-export const createOldGoldEntry = (req, res) => {
+export const createOldGoldEntry = async (req, res) => {
   try {
     const {
       customer_name,
@@ -50,30 +50,34 @@ export const createOldGoldEntry = (req, res) => {
     const rand = Math.floor(1000 + Math.random() * 9000);
     const receiptNo = `OG-${dateStr}-${rand}`;
 
-    const stmt = db.prepare(`
-      INSERT INTO old_gold_transactions (
-        receipt_no, customer_name, customer_phone, gross_weight, stone_dust_deduction,
-        net_weight, purity_touch_pct, fine_gold_weight, valuation_rate_per_gram, total_valuation,
-        settlement_mode, linked_invoice_no, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
-      receiptNo, customer_name, customer_phone || '', gWeight, dustDed,
-      nWeight, touch, fineGold, rate, totalValuation, settlement_mode, linked_invoice_no, notes
-    );
+    const transaction = await OldGoldTransaction.create({
+      receipt_no: receiptNo,
+      customer_name,
+      customer_phone: customer_phone || '',
+      gross_weight: gWeight,
+      stone_dust_deduction: dustDed,
+      net_weight: nWeight,
+      purity_touch_pct: touch,
+      fine_gold_weight: fineGold,
+      valuation_rate_per_gram: rate,
+      total_valuation: totalValuation,
+      settlement_mode,
+      linked_invoice_no,
+      notes
+    });
 
     // Stock ledger entry
-    db.prepare(`
-      INSERT INTO stock_ledger (sku, title, movement_type, gross_weight, net_weight, reference_id, reference_type, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      receiptNo, `Old Gold Scrap from ${customer_name}`, 'IN_OLD_GOLD',
-      gWeight, nWeight, receiptNo, 'OLD_GOLD_BUYBACK',
-      `Purchased ${nWeight}g (${touch}% touch) scrap gold @ ₹${rate}/g`
-    );
+    await StockLedger.create({
+      sku: receiptNo,
+      title: `Old Gold Scrap from ${customer_name}`,
+      movement_type: 'IN_OLD_GOLD',
+      gross_weight: gWeight,
+      net_weight: nWeight,
+      reference_id: receiptNo,
+      reference_type: 'OLD_GOLD_BUYBACK',
+      notes: `Purchased ${nWeight}g (${touch}% touch) scrap gold @ ₹${rate}/g`
+    });
 
-    const transaction = db.prepare('SELECT * FROM old_gold_transactions WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, transaction });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
