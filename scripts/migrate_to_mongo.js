@@ -10,7 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const LOCAL_DB_PATH = path.join(__dirname, '../server/jewelflow.db');
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://omtrivedi9369_db_user:T8hORy5I2wa7eEt0@cluster0.wq5vlrx.mongodb.net/jewelflow?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGODB_URI || process.argv[2];
+
+if (!MONGO_URI) {
+  console.log('❌ Please provide your MongoDB connection string:');
+  console.log('Usage: node scripts/migrate_to_mongo.js "mongodb+srv://..."');
+  process.exit(1);
+}
 
 async function migrate() {
   console.log('🚀 Connecting to MongoDB Atlas with MongoClient...');
@@ -186,25 +192,7 @@ async function migrate() {
   }
   console.log(`✅ Migrated ${oldGold.length} Old Gold Transactions to MongoDB.`);
 
-  // Verification Counts
-  const counts = await Promise.all([
-    ratesCol.countDocuments(),
-    empCol.countDocuments(),
-    custCol.countDocuments(),
-    prodCol.countDocuments(),
-    invCol.countDocuments(),
-    ogCol.countDocuments()
-  ]);
-
-  console.log('\n📊 Live MongoDB Atlas Collections in "jewelflow":');
-  console.log(` - metal_rates: ${counts[0]} documents`);
-  console.log(` - employees: ${counts[1]} documents`);
-  console.log(` - customers: ${counts[2]} documents`);
-  console.log(` - products: ${counts[3]} documents`);
-  console.log(` - sales_invoices: ${counts[4]} documents`);
-  console.log(` - old_gold_transactions: ${counts[5]} documents`);
-
-  console.log('\n🎉 ALL LOCAL SQLITE DATA IS NOW 100% MIGRATED TO MONGODB ATLAS!');
+  console.log('\n🎉 ALL SQLITE DATA SUCCESSFULLY MIGRATED TO MONGODB ATLAS!');
   await client.close();
 }
 

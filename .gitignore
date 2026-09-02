@@ -22,5 +22,7 @@ Thumbs.db
 
 # Environment
 .env
-.env.local
+.env.*
+*.env
+server/.env
 dist/dist/

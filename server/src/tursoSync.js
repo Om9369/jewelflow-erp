@@ -1,7 +1,7 @@
 import { createClient } from '@libsql/client';
 
-const TURSO_URL = process.env.TURSO_DATABASE_URL || 'libsql://jewelflow-db-om9369.aws-ap-south-1.turso.io';
-const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE4MTk4MDgzODksImlhdCI6MTc4ODI3MjM4OSwiaWQiOiIwMWEwNWQ1Ni1hYjAxLTc3M2EtYTlkNS02NjhiMWNiOWM1MmIiLCJraWQiOiJaNzJzNHZtbXg3UnYtaTFpNl9BSDJGdWhCQ2xNbWdiRVFneFUyNldkc2RVIiwicmlkIjoiNGMxYWU5ZDItZmEwYS00NGJiLTlkN2EtYzc1M2FmYjU5NTViIn0.XDSdO98b--JbDq3q-_g1WhlDesur_1g_nifv_FrQHmOi56Tw9iV6BoAXWnedJS_WoLrF5qvA8DCTfrkLU486Bw';
+const TURSO_URL = process.env.TURSO_DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
 let client = null;
 

@@ -5,9 +5,17 @@ const localDb = new DatabaseSync('server/jewelflow.db');
 const cols = localDb.prepare('PRAGMA table_info(stock_ledger)').all();
 console.log('Local stock_ledger cols:', cols.map(c => c.name));
 
+const TURSO_URL = process.env.TURSO_DATABASE_URL || process.argv[2];
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || process.argv[3];
+
+if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
+  console.error('❌ Please set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.');
+  process.exit(1);
+}
+
 const turso = createClient({
-  url: 'libsql://jewelflow-db-om9369.aws-ap-south-1.turso.io',
-  authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE4MTk4MDgzODksImlhdCI6MTc4ODI3MjM4OSwiaWQiOiIwMWEwNWQ1Ni1hYjAxLTc3M2EtYTlkNS02NjhiMWNiOWM1MmIiLCJraWQiOiJaNzJzNHZtbXg3UnYtaTFpNl9BSDJGdWhCQ2xNbWdiRVFneFUyNldkc2RVIiwicmlkIjoiNGMxYWU5ZDItZmEwYS00NGJiLTlkN2EtYzc1M2FmYjU5NTViIn0.XDSdO98b--JbDq3q-_g1WhlDesur_1g_nifv_FrQHmOi56Tw9iV6BoAXWnedJS_WoLrF5qvA8DCTfrkLU486Bw'
+  url: TURSO_URL,
+  authToken: TURSO_AUTH_TOKEN
 });
 
 async function run() {

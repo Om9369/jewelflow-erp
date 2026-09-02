@@ -7,8 +7,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const LOCAL_DB_PATH = path.join(__dirname, '../server/jewelflow.db');
-const TURSO_URL = process.env.TURSO_DATABASE_URL || 'libsql://jewelflow-db-om9369.aws-ap-south-1.turso.io';
-const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE4MTk4MDgzODksImlhdCI6MTc4ODI3MjM4OSwiaWQiOiIwMWEwNWQ1Ni1hYjAxLTc3M2EtYTlkNS02NjhiMWNiOWM1MmIiLCJraWQiOiJaNzJzNHZtbXg3UnYtaTFpNl9BSDJGdWhCQ2xNbWdiRVFneFUyNldkc2RVIiwicmlkIjoiNGMxYWU5ZDItZmEwYS00NGJiLTlkN2EtYzc1M2FmYjU5NTViIn0.XDSdO98b--JbDq3q-_g1WhlDesur_1g_nifv_FrQHmOi56Tw9iV6BoAXWnedJS_WoLrF5qvA8DCTfrkLU486Bw';
+const TURSO_URL = process.env.TURSO_DATABASE_URL || process.argv[2];
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || process.argv[3];
+
+if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
+  console.error('❌ Please set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.');
+  process.exit(1);
+}
 
 const localDb = new DatabaseSync(LOCAL_DB_PATH);
 const turso = createClient({

@@ -3,13 +3,17 @@ try { dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']); } catch(e) {}
 
 import { MongoClient } from 'mongodb';
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://omtrivedi9369_db_user:T8hORy5I2wa7eEt0@cluster0.wq5vlrx.mongodb.net/jewelflow?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGODB_URI;
 
 let client = null;
 let db = null;
 
 export async function connectMongo() {
   if (db) return db;
+  if (!MONGO_URI) {
+    console.warn('⚠️ MONGODB_URI not set in environment variables.');
+    return null;
+  }
   try {
     client = new MongoClient(MONGO_URI);
     await client.connect();
