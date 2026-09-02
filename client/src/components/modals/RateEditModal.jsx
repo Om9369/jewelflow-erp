@@ -9,15 +9,21 @@ export default function RateEditModal({ isOpen, onClose, rates, onRatesUpdated }
 
   useEffect(() => {
     if (rates && rates.length > 0) {
-      setFormData(rates.map(r => ({ ...r })));
+      setFormData(rates.map(r => ({
+        ...r,
+        key: r._id || r.id || `${r.metal}_${r.purity}`
+      })));
     }
   }, [rates, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleChange = (id, newRate) => {
+  const handleChange = (uniqueKey, newRate) => {
     setFormData(prev =>
-      prev.map(item => (item.id === id ? { ...item, rate_per_gram: newRate } : item))
+      prev.map(item => {
+        const k = item.key || item._id || item.id || `${item.metal}_${item.purity}`;
+        return k === uniqueKey ? { ...item, rate_per_gram: newRate } : item;
+      })
     );
   };
 
@@ -26,7 +32,13 @@ export default function RateEditModal({ isOpen, onClose, rates, onRatesUpdated }
     setLoading(true);
     setMessage('');
     try {
-      const payload = formData.map(r => ({ id: r.id, rate_per_gram: parseFloat(r.rate_per_gram) }));
+      const payload = formData.map(r => ({
+        _id: r._id,
+        id: r.id,
+        metal: r.metal,
+        purity: r.purity,
+        rate_per_gram: parseFloat(r.rate_per_gram) || 0
+      }));
       const res = await api.bulkUpdateRates(payload);
       if (res.success) {
         onRatesUpdated(res.rates);
@@ -76,35 +88,38 @@ export default function RateEditModal({ isOpen, onClose, rates, onRatesUpdated }
         {/* Rates Table / Inputs */}
         <form onSubmit={handleSave} className="mt-4 space-y-3">
           <div className="max-h-[340px] overflow-y-auto space-y-2.5 pr-1">
-            {formData.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-amber-400">{item.metal}</span>
-                    <span className="text-xs font-semibold text-slate-200">{item.purity}</span>
+            {formData.map((item) => {
+              const uniqueKey = item.key || item._id || item.id || `${item.metal}_${item.purity}`;
+              return (
+                <div
+                  key={uniqueKey}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-400">{item.metal}</span>
+                      <span className="text-xs font-semibold text-slate-200">{item.purity}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Last updated: {item.updated_at ? new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Last updated: {new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 font-mono">₹/g</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    required
-                    value={item.rate_per_gram}
-                    onChange={(e) => handleChange(item.id, e.target.value)}
-                    className="w-32 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-right font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500"
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 font-mono">₹/g</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      required
+                      value={item.rate_per_gram}
+                      onChange={(e) => handleChange(uniqueKey, e.target.value)}
+                      className="w-32 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-right font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
