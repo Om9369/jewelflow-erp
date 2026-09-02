@@ -1,13 +1,12 @@
 import { getLocalStore, saveLocalStore } from './mockData';
-import { tursoApi } from './tursoDirect';
 
 const API_BASE = '/api';
 
-// Fast fetch with 1.5s timeout; seamlessly falls back if offline
+// Fast fetch with 3s timeout; seamlessly falls back if offline or serverless cold start
 async function fetchOrFallback(url, options, fallbackFn) {
   try {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 1500);
+    const id = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(id);
     if (res.ok) {
@@ -18,12 +17,8 @@ async function fetchOrFallback(url, options, fallbackFn) {
 }
 
 export const api = {
-  // Metal Rates
+  // ─── Metal Rates ────────────────────────────────────────────────────────────
   getRates: async () => {
-    try {
-      const res = await tursoApi.getRates();
-      if (res && res.success && res.rates && res.rates.length > 0) return res;
-    } catch (e) {}
     return fetchOrFallback(`${API_BASE}/rates`, {}, () => {
       const store = getLocalStore();
       return { success: true, rates: store.metal_rates || [] };
@@ -31,9 +26,6 @@ export const api = {
   },
 
   updateRate: async (id, rate_per_gram) => {
-    try {
-      await tursoApi.updateRate(id, rate_per_gram);
-    } catch (e) {}
     return fetchOrFallback(`${API_BASE}/rates/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -63,13 +55,8 @@ export const api = {
     });
   },
 
-  // Inventory
+  // ─── Inventory ─────────────────────────────────────────────────────────────
   getInventory: async (params = {}) => {
-    try {
-      const res = await tursoApi.getInventory(params);
-      if (res && res.success && res.products) return res;
-    } catch (e) {}
-
     const query = new URLSearchParams(params).toString();
     return fetchOrFallback(`${API_BASE}/inventory?${query}`, {}, () => {
       const store = getLocalStore();
@@ -108,11 +95,6 @@ export const api = {
   },
 
   createProduct: async (productData) => {
-    try {
-      const res = await tursoApi.createProduct(productData);
-      if (res && res.success) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/inventory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,10 +117,6 @@ export const api = {
   },
 
   updateProduct: async (id, productData) => {
-    try {
-      await tursoApi.updateProduct(id, productData);
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/inventory/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -155,10 +133,6 @@ export const api = {
   },
 
   deleteProduct: async (id) => {
-    try {
-      await tursoApi.deleteProduct(id);
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/inventory/${id}`, {
       method: 'DELETE'
     }, () => {
@@ -169,13 +143,8 @@ export const api = {
     });
   },
 
-  // Sales
+  // ─── Sales Invoices ─────────────────────────────────────────────────────────
   createInvoice: async (invoiceData) => {
-    try {
-      const res = await tursoApi.createInvoice(invoiceData);
-      if (res && res.success) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/sales/invoices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -228,11 +197,6 @@ export const api = {
   },
 
   getInvoices: async () => {
-    try {
-      const res = await tursoApi.getInvoices();
-      if (res && res.success && res.invoices) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/sales/invoices`, {}, () => {
       const store = getLocalStore();
       return { success: true, invoices: store.sales_invoices || [] };
@@ -247,13 +211,8 @@ export const api = {
     });
   },
 
-  // Employees
+  // ─── Employees ──────────────────────────────────────────────────────────────
   getEmployees: async () => {
-    try {
-      const res = await tursoApi.getEmployees();
-      if (res && res.success && res.employees && res.employees.length > 0) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/employees`, {}, () => {
       const store = getLocalStore();
       const rawEmployees = store.employees || [];
@@ -293,11 +252,6 @@ export const api = {
   },
 
   createEmployee: async (data) => {
-    try {
-      const res = await tursoApi.createEmployee(data);
-      if (res && res.success) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/employees`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -325,10 +279,6 @@ export const api = {
   },
 
   updateEmployee: async (id, data) => {
-    try {
-      await tursoApi.updateEmployee(id, data);
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/employees/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -344,25 +294,9 @@ export const api = {
     });
   },
 
-  // Customers
+  // ─── Customers ─────────────────────────────────────────────────────────────
   getCustomers: async (search = '') => {
-    try {
-      const res = await tursoApi.getCustomers();
-      if (res && res.success && res.customers) {
-        if (search) {
-          const q = search.toLowerCase();
-          const filtered = res.customers.filter(c =>
-            c.name.toLowerCase().includes(q) ||
-            c.phone.includes(q) ||
-            (c.pan_card && c.pan_card.toLowerCase().includes(q))
-          );
-          return { success: true, customers: filtered };
-        }
-        return res;
-      }
-    } catch (e) {}
-
-    return fetchOrFallback(`${API_BASE}/customers?search=${search}`, {}, () => {
+    return fetchOrFallback(`${API_BASE}/customers?search=${encodeURIComponent(search)}`, {}, () => {
       const store = getLocalStore();
       let custs = store.customers || [];
       if (search) {
@@ -378,11 +312,6 @@ export const api = {
   },
 
   createCustomer: async (data) => {
-    try {
-      const res = await tursoApi.createCustomer(data);
-      if (res && res.success) return res;
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/customers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -411,10 +340,6 @@ export const api = {
   },
 
   updateCustomer: async (id, data) => {
-    try {
-      await tursoApi.updateCustomer(id, data);
-    } catch (e) {}
-
     return fetchOrFallback(`${API_BASE}/customers/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -430,13 +355,36 @@ export const api = {
     });
   },
 
-  // Dashboard Analytics
-  getDashboard: async () => {
-    try {
-      const res = await tursoApi.getDashboard();
-      if (res && res.success && res.data) return res;
-    } catch (e) {}
+  // ─── Old Gold Scrap & Exchange ─────────────────────────────────────────────
+  getOldGoldTransactions: async () => {
+    return fetchOrFallback(`${API_BASE}/old-gold`, {}, () => {
+      const store = getLocalStore();
+      return { success: true, transactions: store.old_gold_transactions || [] };
+    });
+  },
 
+  createOldGoldTransaction: async (data) => {
+    return fetchOrFallback(`${API_BASE}/old-gold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, () => {
+      const store = getLocalStore();
+      const newTx = {
+        id: Date.now(),
+        receipt_no: `OG-${Date.now().toString().slice(-6)}`,
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      if (!store.old_gold_transactions) store.old_gold_transactions = [];
+      store.old_gold_transactions.unshift(newTx);
+      saveLocalStore(store);
+      return { success: true, transaction: newTx };
+    });
+  },
+
+  // ─── Dashboard Analytics ───────────────────────────────────────────────────
+  getDashboard: async () => {
     return fetchOrFallback(`${API_BASE}/analytics/dashboard`, {}, () => {
       const store = getLocalStore();
       const prods = (store.products || []).filter(p => p.status === 'IN_STOCK');

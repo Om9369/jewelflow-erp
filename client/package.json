@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4",
     "clsx": "^2.1.1",
     "jspdf": "^2.5.2",
     "lucide-react": "^0.475.0",

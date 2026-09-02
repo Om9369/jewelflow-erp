@@ -2,7 +2,6 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { syncFromTurso } from './tursoSync.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -207,9 +206,6 @@ export function initDatabase() {
   _seedIfEmpty();
   _migrateFromJSON();
   _createBackup();
-
-  // Async sync from Turso Cloud SQLite if configured
-  syncFromTurso(db).catch(err => console.warn('Turso initial sync note:', err.message));
 
   console.log('✅ JewelFlow SQLite database ready:', DB_PATH);
 }

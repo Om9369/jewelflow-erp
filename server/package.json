@@ -9,11 +9,11 @@
     "dev": "node --experimental-sqlite --watch src/server.js"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4",
     "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "mongodb": "^7.6.0",
     "mongoose": "^9.9.4"
   }
 }
