@@ -111,43 +111,59 @@ export default function StockAudit() {
             Showcase Trays & Vault Drawers ({trays.length})
           </h3>
 
-          <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-            {trays.map((tray, idx) => {
-              const isSelected = selectedTray?.tray_name === tray.tray_name;
+          {trays.length === 0 ? (
+            <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 text-xs">
+              <Layers className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+              <p className="font-semibold text-slate-300">No Showcase Trays Registered</p>
+              <p className="text-[11px] text-slate-500 mt-1">Tag jewellery items in Inventory & assign them to Counter Trays to begin physical scale reconciliation.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+              {trays.map((tray, idx) => {
+                const isSelected = selectedTray?.tray_name === tray.tray_name;
 
-              return (
-                <div
-                  key={idx}
-                  onClick={() => selectTray(tray)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
-                    isSelected
-                      ? 'bg-amber-500/10 border-amber-500/40 text-slate-100 shadow-md ring-1 ring-amber-500/20'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isSelected ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
-                      <Layers className="w-4 h-4" />
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => selectTray(tray)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
+                      isSelected
+                        ? 'bg-amber-500/10 border-amber-500/40 text-slate-100 shadow-md ring-1 ring-amber-500/20'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isSelected ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-100">{tray.tray_name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          {tray.items_count || 0} pcs • {typeof tray.categories === 'object' && tray.categories ? Object.keys(tray.categories).join(', ') : (tray.category || 'All')}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        {tray.items_count || 0} pcs • {typeof tray.categories === 'object' && tray.categories ? Object.keys(tray.categories).join(', ') : (tray.category || 'All')}
-                      </p>
+
+                    <div className="text-right font-mono">
+                      <span className="font-bold text-amber-300 block">{tray.total_gross_weight}g</span>
+                      <span className="text-[10px] text-slate-400">Gross Weight</span>
                     </div>
                   </div>
-
-                  <div className="text-right font-mono">
-                    <span className="font-bold text-amber-300 block">{tray.total_gross_weight}g</span>
-                    <span className="text-[10px] text-slate-400">Gross Weight</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right 7 Cols: Physical Scale Weighing Auditor */}
         <div className="lg:col-span-7 space-y-4">
+          {!selectedTray && (
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">
+              <Scale className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+              <p className="font-semibold text-slate-300">Weighing Scale Reconciliation</p>
+              <p className="text-[11px] text-slate-500 mt-1">Add items to inventory with a showcase tray to audit trays against physical scale readings.</p>
+            </div>
+          )}
           {selectedTray && (
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
               

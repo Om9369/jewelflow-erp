@@ -38,32 +38,7 @@ export const getTrayList = async (req, res) => {
     res.json({
       success: true,
       count: trays.length,
-      trays: trays.length > 0 ? trays : [
-        {
-          tray_name: 'Showcase A - Tray 1 (Necklaces)',
-          counter_tray: 'Showcase A - Tray 1',
-          category: 'Necklaces',
-          metal_type: 'Gold',
-          items_count: 6,
-          total_gross_weight: 185.4,
-          total_net_weight: 178.2,
-          categories: { Necklaces: 6 },
-          metals: { Gold: 6 },
-          items: []
-        },
-        {
-          tray_name: 'Showcase B - Tray 2 (Bangles)',
-          counter_tray: 'Showcase B - Tray 2',
-          category: 'Bangles',
-          metal_type: 'Gold',
-          items_count: 8,
-          total_gross_weight: 142.5,
-          total_net_weight: 142.5,
-          categories: { Bangles: 8 },
-          metals: { Gold: 8 },
-          items: []
-        }
-      ]
+      trays: trays
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

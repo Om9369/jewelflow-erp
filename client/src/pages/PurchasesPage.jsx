@@ -23,108 +23,17 @@ import { api } from '../services/api';
 import { getStoreConfig } from '../services/storeConfig';
 import PurchaseVoucherModal from '../components/modals/PurchaseVoucherModal';
 
-const INITIAL_SUPPLIERS = [
-  {
-    id: 'SUP-101',
-    name: 'Zaveri Bullion Refinery',
-    contact_person: 'Ramesh Zaveri',
-    phone: '9820112233',
-    city: 'Mumbai (Zaveri Bazaar)',
-    gstin: '27AAACZ8890K1Z2',
-    total_purchases_inr: 2850000,
-    metal_delivered_grams: 412.5,
-    pending_balance_inr: 0,
-    pending_fine_gold_grams: 0
-  },
-  {
-    id: 'SUP-102',
-    name: 'Surat Diamond & Casting Mart',
-    contact_person: 'Praveen Shah',
-    phone: '9819445566',
-    city: 'Surat',
-    gstin: '24AABCS4455P1Z8',
-    total_purchases_inr: 1650000,
-    metal_delivered_grams: 245.0,
-    pending_balance_inr: 45000,
-    pending_fine_gold_grams: 0
-  },
-  {
-    id: 'SUP-103',
-    name: 'Rajkot Gold Chain Manufacturers',
-    contact_person: 'Harshil Patel',
-    phone: '9879001122',
-    city: 'Rajkot',
-    gstin: '24AAHRP9900L1Z4',
-    total_purchases_inr: 980000,
-    metal_delivered_grams: 145.2,
-    pending_balance_inr: 0,
-    pending_fine_gold_grams: 5.5
-  }
-];
-
-const INITIAL_PURCHASES = [
-  {
-    id: 'PUR-2026-001',
-    voucher_no: 'INV-ZBR-8891',
-    supplier_name: 'Zaveri Bullion Refinery',
-    supplier_id: 'SUP-101',
-    date: '2026-08-28',
-    items_summary: '22K Short Haar (3 Pcs), 22K Casting Rings (10 Pcs)',
-    total_gross_weight: 48.500,
-    total_net_weight: 48.500,
-    total_fine_gold_grams: 44.426,
-    subtotal_inr: 327375,
-    making_charges_inr: 21825,
-    total_amount_inr: 349200,
-    settlement: {
-      cash_paid: 100000,
-      rtgs_paid: 150000,
-      rtgs_ref: 'HDFCR52026082800192',
-      fine_metal_grams_given: 10.000,
-      fine_metal_valuation_inr: 67500,
-      old_gold_grams_given: 5.000,
-      old_gold_valuation_inr: 31700,
-      advance_adjusted: 0,
-      remaining_balance_due: 0
-    },
-    status: 'SETTLED'
-  },
-  {
-    id: 'PUR-2026-002',
-    voucher_no: 'CH-SDM-4012',
-    supplier_name: 'Surat Diamond & Casting Mart',
-    supplier_id: 'SUP-102',
-    date: '2026-08-29',
-    items_summary: '22K Floral Rings Lot (15 Pcs)',
-    total_gross_weight: 35.200,
-    total_net_weight: 33.700,
-    total_fine_gold_grams: 30.869,
-    subtotal_inr: 227475,
-    making_charges_inr: 15165,
-    total_amount_inr: 242640,
-    settlement: {
-      cash_paid: 50000,
-      rtgs_paid: 100000,
-      rtgs_ref: 'SBIN002938194',
-      fine_metal_grams_given: 0,
-      fine_metal_valuation_inr: 0,
-      old_gold_grams_given: 7.500,
-      old_gold_valuation_inr: 47640,
-      advance_adjusted: 0,
-      remaining_balance_due: 45000
-    },
-    status: 'PARTIAL_DUE'
-  }
-];
+const INITIAL_SUPPLIERS = [];
+const INITIAL_PURCHASES = [];
 
 export default function PurchasesPage({ rates }) {
   const [activeSubTab, setActiveSubTab] = useState('REGISTER'); // 'REGISTER' | 'SUPPLIERS'
   const [purchases, setPurchases] = useState(() => {
-    const saved = localStorage.getItem('jewelflow_purchases');
+    const saved = localStorage.getItem('jewelflow_purchases_v2');
     return saved ? JSON.parse(saved) : INITIAL_PURCHASES;
   });
   const [suppliers, setSuppliers] = useState(() => {
-    const saved = localStorage.getItem('jewelflow_suppliers');
+    const saved = localStorage.getItem('jewelflow_suppliers_v2');
     return saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
   });
   
